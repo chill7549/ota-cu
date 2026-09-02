@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Ota-Cu - 실시간 현장 레이드 & 굿즈 스왑</title>
+  
+  <!-- PWA & Native App Meta Tags -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#ec4899" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Ota-Cu" />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕊️</text></svg>" />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            otacu: {
+              primary: '#ec4899',
+              dark: '#0f172a',
+              card: '#1e293b',
+              baepsaeBg: '#fbf9f5',
+              baepsaeCard: '#ffffff',
+              baepsaeText: '#292524',
+              pastelPink: '#fbcfe8',
+              pastelPinkDark: '#db2777'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & Babel Standalone CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Custom Scrollbar Hide */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .glass-panel-dark {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-panel-light {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 207, 232, 0.6);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-pink-500 selection:text-white min-h-screen">
+  
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- Subculture Illustration Festival Mock Data ---
+    const initialRaidData = [
+      { 
+        id: 1, 
+        booth: 'A-01', 
+        type: 'SOLDOUT',
+        typeLabel: '품절 소식', 
+        text: '뱁새 아크릴 키링 현장 수량 완판입니다.', 
+        time: '방금 전', 
+        isRecent: true,
+        likes: 14,
+        dislikes: 1,
+        author: 'booth_master',
+        isVeteran: true
+      },
+      { 
+        id: 2, 
+        booth: 'B-12', 
+        type: 'INFO', 
+        typeLabel: '부스 공지',
+        text: '작가님 점심 식사로 12시까지 부스 비움.', 
+        time: '5분 전', 
+        isRecent: true,
+        likes: 8,
+        dislikes: 0,
+        author: 'bbabsae_artist',
+        isVeteran: true
+      },
+      { 
+        id: 3, 
+        booth: '입구', 
+        type: 'WAIT', 
+        typeLabel: '대기열',
+        text: '현재 현장 발권 대기열 30분 이상 소요됩니다.', 
+        time: '11:00 (35분 전)', 
+        isRecent: false,
+        likes: 5,
+        dislikes: 5,
+        author: 'visitor_otaku',
+        isVeteran: false
+      },
+      { 
+        id: 4, 
+        booth: 'C-04', 
+        type: 'SOLDOUT', 
+        typeLabel: '품절 소식',
+        text: '고양이 일러스트 엽서 세트 B타입 수량 소진되었습니다!', 
+        time: '10:45 (50분 전)', 
+        isRecent: false,
+        likes: 21,
+        dislikes: 2,
+        author: 'cat_artist',
+        isVeteran: false
+      },
+      { 
+        id: 5, 
+        booth: 'D-08', 
+        type: 'INFO', 
+        typeLabel: '부스 공지',
+        text: '5만원 이상 구매 고객 한정 선착순 홀로그램 장바구니 증정 중입니다.', 
+        time: '10:20 (1시간 전)', 
+        isRecent: false,
+        likes: 19,
+        dislikes: 0,
+        author: 'd_booth',
+        isVeteran: true
+      }
+    ];
+
+    const initialSwapData = [
+      { 
+        id: 1, 
+        have: 'A-04 부스 홀로그램 엽서', 
+        want: 'B-02 작가님 아크릴 스탠드', 
+        loc: '1층 카페테리아 입구', 
+        isBoosted: true, 
+        status: 'OPEN',
+        author: 'card_collector',
+        time: '방금 전',
+        category: 'STICKER',
+        categoryLabel: '스티커/지류'
+      },
+      { 
+        id: 2, 
+        have: 'A-01 뱁새 아크릴 키링', 
+        want: 'B-04 다람쥐 스티커 팩', 
+        loc: '2홀 출구 물품보관소 앞', 
+        isBoosted: true, 
+        status: 'OPEN',
+        author: 'goods_trader',
+        time: '5분 전',
+        category: 'KEYRING',
+        categoryLabel: '키링/아크릴'
+      },
+      { 
+        id: 3, 
+        have: 'C-11 홀로 공식 포스터', 
+        want: 'C-11 팝업 랜덤 캔뱃지', 
+        loc: 'aT센터 1층 로비 NH농협 ATM 앞', 
+        isBoosted: false, 
+        status: 'OPEN',
+        author: 'poster_fan',
+        time: '15분 전',
+        category: 'POSTER',
+        categoryLabel: '포스터/회지'
+      },
+      { 
+        id: 4, 
+        have: 'E-02 신작 일러스트 회지 특전판', 
+        want: 'E-02 작가 친필 사인 카드', 
+        loc: '휴게존 4번 기둥 앞', 
+        isBoosted: false, 
+        status: 'OPEN',
+        author: 'illust_lover',
+        time: '30분 전',
+        category: 'POSTER',
+        categoryLabel: '포스터/회지'
+      },
+      { 
+        id: 5, 
+        have: 'D-05 엽서 세트', 
+        want: '타 부스 스티커 팩 아무거나', 
+        loc: 'aT센터 앞 벤치', 
+        isBoosted: false, 
+        status: 'COMPLETED',
+        author: 'bench_collector',
+        time: '1시간 전',
+        category: 'STICKER',
+        categoryLabel: '스티커/지류'
+      }
+    ];
+
+    const initialCongestion = {
+      eventName: '일러스트코리아 in aT (9/4~6)',
+      waitMinutes: 30,
+      ticketStatus: '현장 판매중',
+      reportsCount: 42,
+      swapsCount: 18,
+      hallStatus: '쾌적'
+    };
+
+    // --- Component: Main App ---
+    function App() {
+      // Theme State ('dark' | 'baepsae')
+      const [theme, setTheme] = useState('dark');
+      const isBaepsae = theme === 'baepsae';
+
+      // Navigation & Filters State
+      const [activeTab, setActiveTab] = useState('scheduler'); // 'scheduler' | 'raid' | 'swap'
+      const [activeFilter, setActiveFilter] = useState('ALL');
+
+      const [raidData, setRaidData] = useState(initialRaidData);
+      const [swapData, setSwapData] = useState(initialSwapData);
+      const [congestion, setCongestion] = useState(initialCongestion);
+
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('ALL');
+
+      const [userProfile, setUserProfile] = useState({ login: 'Q_User', avatar: '' });
+
+      // Dynamic Tag Systems for Raid Modal
+      const [raidTags, setRaidTags] = useState([
+        { id: 'WAIT', label: '대기열', usage: 10, typeKey: 'WAIT' },
+        { id: 'SOLDOUT', label: '품절 소식', usage: 8, typeKey: 'SOLDOUT' },
+        { id: 'INFO', label: '부스 공지', usage: 5, typeKey: 'INFO' }
+      ]);
+      const [recentlyUsedRaidTagId, setRecentlyUsedRaidTagId] = useState('WAIT');
+      const [selectedRaidTagId, setSelectedRaidTagId] = useState('WAIT');
+      const [isAddingRaidTag, setIsAddingRaidTag] = useState(false);
+      const [customRaidInput, setCustomRaidInput] = useState('');
+
+      // Dynamic Tag Systems for Swap Modal
+      const [swapTags, setSwapTags] = useState([
+        { id: 'STICKER', label: '스티커/지류', usage: 12 },
+        { id: 'KEYRING', label: '키링/아크릴', usage: 9 },
+        { id: 'POSTER', label: '포스터/회지', usage: 6 }
+      ]);
+      const [recentlyUsedSwapTagId, setRecentlyUsedSwapTagId] = useState('STICKER');
+      const [selectedSwapTagId, setSelectedSwapTagId] = useState('STICKER');
+      const [isAddingSwapTag, setIsAddingSwapTag] = useState(false);
+      const [customSwapInput, setCustomSwapInput] = useState('');
+
+      // Modals State
+      const [isCreateRaidOpen, setIsCreateRaidOpen] = useState(false);
+      const [isCreateSwapOpen, setIsCreateSwapOpen] = useState(false);
+      const [isInfrasModalOpen, setIsInfrasModalOpen] = useState(false);
+      const [shareSwapCard, setShareSwapCard] = useState(null);
+      const [pinnedLocationSwap, setPinnedLocationSwap] = useState(null);
+
+      // Toast
+      const [toastMsg, setToastMsg] = useState('');
+
+      const showToast = (msg) => {
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(''), 3000);
+      };
+
+      // Service Worker Registration for PWA Standalone Mode
+      useEffect(() => {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Registration:', err));
+        }
+      }, []);
+
+      // Like & Dislike Handlers
+      const handleLikeRaid = (id) => {
+        setRaidData(prev => prev.map(item => item.id === id ? { ...item, likes: item.likes + 1 } : item));
+        showToast('👍 도움돼요 추천이 반영되었습니다!');
+      };
+
+      const handleDislikeRaid = (id) => {
+        setRaidData(prev => prev.map(item => {
+          if (item.id === id) {
+            const updatedDislikes = item.dislikes + 1;
+            if (updatedDislikes >= item.likes) {
+              showToast('⚠️ 정보가 달라요 피드백 누적으로 교차검증 필요 카드로 등록되었습니다.');
+            } else {
+              showToast('👎 정보가 달라요 피드백이 기록되었습니다.');
+            }
+            return { ...item, dislikes: updatedDislikes };
+          }
+          return item;
+        }));
+      };
+
+      // Add Custom Raid Tag
+      const handleAddCustomRaidTag = (e) => {
+        e.preventDefault();
+        const trimmed = customRaidInput.trim();
+        if (!trimmed) return;
+        
+        const newTagId = `CUSTOM_RAID_${Date.now()}`;
+        const newTag = {
+          id: newTagId,
+          label: trimmed,
+          usage: 1,
+          typeKey: 'INFO'
+        };
+        setRaidTags(prev => [newTag, ...prev]);
+        setSelectedRaidTagId(newTagId);
+        setRecentlyUsedRaidTagId(newTagId);
+        setCustomRaidInput('');
+        setIsAddingRaidTag(false);
+        showToast(`'${trimmed}' 신규 제보 태스크 태그가 추가되었습니다!`);
+      };
+
+      // Add Custom Swap Tag
+      const handleAddCustomSwapTag = (e) => {
+        e.preventDefault();
+        const trimmed = customSwapInput.trim();
+        if (!trimmed) return;
+
+        const newTagId = `CUSTOM_SWAP_${Date.now()}`;
+        const newTag = {
+          id: newTagId,
+          label: trimmed,
+          usage: 1
+        };
+        setSwapTags(prev => [newTag, ...prev]);
+        setSelectedSwapTagId(newTagId);
+        setRecentlyUsedSwapTagId(newTagId);
+        setCustomSwapInput('');
+        setIsAddingSwapTag(false);
+        showToast(`'${trimmed}' 신규 교환 카테고리 태그가 추가되었습니다!`);
+      };
+
+      // Add Raid Post
+      const handleAddRaid = (boothText, textContent) => {
+        const activeTagObj = raidTags.find(t => t.id === selectedRaidTagId) || raidTags[0];
+        setRaidTags(prev => prev.map(t => t.id === activeTagObj.id ? { ...t, usage: t.usage + 1 } : t));
+        setRecentlyUsedRaidTagId(activeTagObj.id);
+
+        const item = {
+          id: Date.now(),
+          booth: boothText,
+          type: activeTagObj.typeKey || 'INFO',
+          typeLabel: activeTagObj.label,
+          text: textContent,
+          time: '방금 전',
+          isRecent: true,
+          likes: 1,
+          dislikes: 0,
+          author: userProfile.login,
+          isVeteran: true
+        };
+        setRaidData([item, ...raidData]);
+        showToast('🚨 실시간 현장 레이드 제보가 등록되었습니다!');
+      };
+
+      // Add Swap Post
+      const handleAddSwap = (have, want, loc, isBoosted) => {
+        const activeTagObj = swapTags.find(t => t.id === selectedSwapTagId) || swapTags[0];
+        setSwapTags(prev => prev.map(t => t.id === activeTagObj.id ? { ...t, usage: t.usage + 1 } : t));
+        setRecentlyUsedSwapTagId(activeTagObj.id);
+
+        const item = {
+          id: Date.now(),
+          have,
+          want,
+          loc,
+          category: activeTagObj.id,
+          categoryLabel: activeTagObj.label,
+          isBoosted,
+          status: 'OPEN',
+          author: userProfile.login,
+          time: '방금 전'
+        };
+        setSwapData([item, ...swapData]);
+        showToast('🔄 내 굿즈 교환 글이 등록되었습니다!');
+      };
+
+      const handleToggleSwapStatus = (id) => {
+        setSwapData(prev => prev.map(s => s.id === id ? { ...s, status: s.status === 'OPEN' ? 'COMPLETED' : 'OPEN' } : s));
+        showToast('교환 상태가 전환되었습니다.');
+      };
+
+      // Sort logic for Raid tags
+      const sortedRaidTags = [...raidTags].sort((a, b) => {
+        if (a.id === recentlyUsedRaidTagId) return -1;
+        if (b.id === recentlyUsedRaidTagId) return 1;
+        return b.usage - a.usage;
+      });
+
+      // Sort logic for Swap tags
+      const sortedSwapTags = [...swapTags].sort((a, b) => {
+        if (a.id === recentlyUsedSwapTagId) return -1;
+        if (b.id === recentlyUsedSwapTagId) return 1;
+        return b.usage - a.usage;
+      });
+
+      // Boosted items sorted ALWAYS at the very top (1st/2nd)
+      const sortedSwapData = [...swapData].sort((a, b) => {
+        if (a.isBoosted === b.isBoosted) return 0;
+        return a.isBoosted ? -1 : 1;
+      });
+
+      return (
+        <div className={`min-h-screen transition-colors duration-300 ${
+          isBaepsae ? 'bg-[#f5f2eb] text-stone-800' : 'bg-slate-950 text-slate-100'
+        }`}>
+          
+          {/* Ambient Glows */}
+          <div className={`fixed top-10 left-10 w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none ${
+            isBaepsae ? 'bg-pink-300/20' : 'bg-indigo-600/10'
+          }`}></div>
+          <div className={`fixed bottom-10 right-10 w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none ${
+            isBaepsae ? 'bg-amber-200/30' : 'bg-purple-600/10'
+          }`}></div>
+
+          {/* MAIN RESPONSIVE CONTAINER (Mobile, iPad/Tablet, Desktop Dashboard) */}
+          <div className="w-full min-h-screen flex flex-col lg:flex-row justify-center items-stretch max-w-7xl mx-auto lg:p-6 lg:gap-6">
+            
+            {/* DESKTOP LEFT SIDEBAR (Visible only on Desktop lg:flex) */}
+            <aside className={`hidden lg:flex lg:w-80 flex-col space-y-4 p-5 rounded-3xl border shadow-xl transition-colors duration-300 h-fit sticky top-6 ${
+              isBaepsae ? 'bg-[#fdfcf9] border-amber-200/80' : 'bg-slate-900 border-slate-800'
+            }`}>
+              <div className="flex items-center space-x-3 pb-3 border-b border-stone-200 dark:border-slate-800">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-black shadow-sm ${
+                  isBaepsae ? 'bg-pink-100 text-pink-600 border border-pink-200' : 'bg-indigo-600 text-white'
+                }`}>
+                  {isBaepsae ? '🕊️' : '🎨'}
+                </div>
+                <div>
+                  <h1 className={`text-2xl font-extrabold tracking-tight ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>
+                    Ota-Cu
+                  </h1>
+                  <span className={`text-[10px] px-2 py-0.5 font-bold rounded-md border ${
+                    isBaepsae ? 'bg-pink-100 text-pink-700 border-pink-300' : 'bg-indigo-950 text-indigo-300 border-indigo-700/50'
+                  }`}>
+                    v1.0 MVP PWA
+                  </span>
+                </div>
+              </div>
+
+              {/* Desktop Sidebar Navigation Menu */}
+              <div className="space-y-1.5 pt-1">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">메뉴 네비게이션</p>
+                {[
+                  { id: 'scheduler', icon: '🗓️', label: '행사 스케줄러' },
+                  { id: 'raid', icon: '🚨', label: '실시간 현장 레이드' },
+                  { id: 'swap', icon: '🔄', label: '굿즈 스왑 (교환)' },
+                ].map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setActiveTab(m.id)}
+                    className={`w-full py-3 px-4 rounded-xl text-sm font-bold flex items-center space-x-3 transition-all ${
+                      activeTab === m.id
+                        ? (isBaepsae ? 'bg-pink-500 text-white shadow-md' : 'bg-indigo-600 text-white shadow-md')
+                        : (isBaepsae ? 'text-stone-700 hover:bg-stone-100' : 'text-slate-300 hover:bg-slate-800')
+                    }`}
+                  >
+                    <span className="text-lg">{m.icon}</span>
+                    <span>{m.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Desktop Theme Toggle & Infras Trigger */}
+              <div className="pt-4 border-t border-stone-200 dark:border-slate-800 space-y-2">
+                <button
+                  onClick={() => setTheme(isBaepsae ? 'dark' : 'baepsae')}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all border flex items-center justify-between shadow-sm ${
+                    isBaepsae 
+                      ? 'bg-pink-100 text-pink-700 border-pink-300 hover:bg-pink-200' 
+                      : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  <span>현재 테마</span>
+                  <span>{isBaepsae ? '🕊️ 뱁새 웜화이트' : '🌙 다크 모드'}</span>
+                </button>
+
+                <button
+                  onClick={() => setIsInfrasModalOpen(true)}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all border flex items-center justify-between shadow-sm ${
+                    isBaepsae ? 'bg-stone-100 text-stone-700 border-stone-300' : 'bg-slate-800 text-indigo-300 border-slate-700'
+                  }`}
+                >
+                  <span>aT센터 시설 및 부스맵</span>
+                  <span>ℹ️ 인프라</span>
+                </button>
+              </div>
+            </aside>
+
+            {/* CENTER / MAIN FEED CONTAINER (Mobile, iPad, Desktop Center) */}
+            <div className={`w-full max-w-md md:max-w-2xl lg:max-w-xl mx-auto flex flex-col relative shadow-2xl lg:rounded-3xl overflow-hidden border-0 lg:border transition-colors duration-300 min-h-screen md:min-h-[850px] ${
+              isBaepsae 
+                ? 'bg-[#fdfcf9] border-amber-200/80 shadow-pink-500/5' 
+                : 'bg-slate-900 border-slate-800'
+            }`}>
+              
+              {/* Header (Mobile & iPad View) */}
+              <header className={`px-4 py-3 border-b flex justify-between items-center sticky top-0 z-30 shadow-sm transition-colors duration-300 ${
+                isBaepsae 
+                  ? 'bg-white/90 backdrop-blur-md border-amber-200/60 text-stone-800' 
+                  : 'bg-slate-900/90 backdrop-blur-md border-slate-800 text-slate-100'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg font-black shadow-sm ${
+                    isBaepsae ? 'bg-pink-100 text-pink-600 border border-pink-200' : 'bg-indigo-600 text-white'
+                  }`}>
+                    {isBaepsae ? '🕊️' : '🎨'}
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-1.5">
+                      <h1 className={`text-xl font-extrabold tracking-tight ${
+                        isBaepsae ? 'text-pink-600' : 'text-indigo-400'
+                      }`}>
+                        Ota-Cu
+                      </h1>
+                      <span className={`text-[10px] px-1.5 py-0.5 font-bold rounded-md border ${
+                        isBaepsae 
+                          ? 'bg-pink-100 text-pink-700 border-pink-300' 
+                          : 'bg-indigo-950 text-indigo-300 border-indigo-700/50'
+                      }`}>
+                        PWA App
+                      </span>
+                    </div>
+                    <p className={`text-[11px] font-medium ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>
+                      {congestion.eventName}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {/* Theme Toggle Button */}
+                  <button
+                    onClick={() => setTheme(isBaepsae ? 'dark' : 'baepsae')}
+                    className={`px-2.5 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center space-x-1 shadow-sm ${
+                      isBaepsae 
+                        ? 'bg-pink-100 text-pink-700 border-pink-300 hover:bg-pink-200' 
+                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                    }`}
+                    title="뱁새 웜 화이트 / 다크 테마 전환"
+                  >
+                    <span>{isBaepsae ? '🕊️ 뱁새' : '🌙 다크'}</span>
+                  </button>
+
+                  {/* Infrastructure Button */}
+                  <button
+                    onClick={() => setIsInfrasModalOpen(true)}
+                    className={`px-2 py-1.5 rounded-lg text-xs font-bold shadow-sm flex items-center space-x-1 border transition-all ${
+                      isBaepsae 
+                        ? 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200' 
+                        : 'bg-slate-800 text-indigo-300 border-slate-700 hover:bg-slate-700'
+                    }`}
+                    title="aT센터 인프라 안내"
+                  >
+                    <span>ℹ️ 인프라</span>
+                  </button>
+                </div>
+              </header>
+
+              {/* Main Content Scrollable Area (Requirement 4: pb-40 added) */}
+              <main className="flex-1 overflow-y-auto p-4 space-y-4 relative scrollbar-hide pb-40">
+                
+                {/* TAB 1: SCHEDULER */}
+                {activeTab === 'scheduler' && (
+                  <div className="space-y-4">
+                    {/* Calendar Card */}
+                    <div className={`p-4 md:p-6 rounded-xl border shadow-sm space-y-3 ${
+                      isBaepsae ? 'bg-white border-amber-200/80 shadow-pink-500/5' : 'glass-panel-dark border-slate-800'
+                    }`}>
+                      <div className={`flex justify-between items-center border-b pb-2 ${
+                        isBaepsae ? 'border-amber-100' : 'border-slate-800'
+                      }`}>
+                        <h2 className={`text-base md:text-lg font-extrabold flex items-center space-x-2 ${
+                          isBaepsae ? 'text-stone-800' : 'text-slate-100'
+                        }`}>
+                          <span>🗓️ 2026년 9월 행사 일정</span>
+                        </h2>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded border ${
+                          isBaepsae ? 'bg-pink-100 text-pink-700 border-pink-200' : 'bg-indigo-950 text-indigo-400 border-indigo-800/50'
+                        }`}>
+                          September 2026
+                        </span>
+                      </div>
+
+                      {/* September Calendar Grid */}
+                      <div className="space-y-1">
+                        <div className={`grid grid-cols-7 text-center text-xs md:text-sm font-bold py-1 ${
+                          isBaepsae ? 'text-stone-500' : 'text-slate-400'
+                        }`}>
+                          <span className="text-rose-500">일</span>
+                          <span>월</span>
+                          <span>화</span>
+                          <span>수</span>
+                          <span>목</span>
+                          <span>금</span>
+                          <span className="text-sky-500">토</span>
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1 md:gap-2 text-center text-xs md:text-sm font-semibold">
+                          <div className="p-2"></div>
+                          <div className="p-2"></div>
+
+                          <div className={`p-2 ${isBaepsae ? 'text-stone-400' : 'text-slate-500'}`}>1</div>
+                          <div className={`p-2 ${isBaepsae ? 'text-stone-400' : 'text-slate-500'}`}>2</div>
+                          <div className={`p-2 ${isBaepsae ? 'text-stone-400' : 'text-slate-500'}`}>3</div>
+
+                          {/* Sept 4 ~ 6 Event Days */}
+                          <div 
+                            onClick={() => setActiveTab('raid')}
+                            className={`p-2 font-extrabold rounded-xl border-2 shadow-md cursor-pointer hover:scale-105 transition-all text-center relative ${
+                              isBaepsae 
+                                ? 'bg-pink-100 text-pink-700 border-pink-400' 
+                                : 'bg-indigo-900 text-amber-300 border-indigo-500'
+                            }`}
+                          >
+                            <span>4</span>
+                            <span className="block text-[9px] opacity-90 leading-tight mt-0.5">일러코</span>
+                          </div>
+                          <div 
+                            onClick={() => setActiveTab('raid')}
+                            className={`p-2 font-extrabold rounded-xl border-2 shadow-md cursor-pointer hover:scale-105 transition-all text-center relative ${
+                              isBaepsae 
+                                ? 'bg-pink-100 text-pink-700 border-pink-400' 
+                                : 'bg-indigo-900 text-amber-300 border-indigo-500'
+                            }`}
+                          >
+                            <span>5</span>
+                            <span className="block text-[9px] opacity-90 leading-tight mt-0.5">일러코</span>
+                          </div>
+                          <div 
+                            onClick={() => setActiveTab('raid')}
+                            className={`p-2 font-extrabold rounded-xl border-2 shadow-md cursor-pointer hover:scale-105 transition-all text-center relative ${
+                              isBaepsae 
+                                ? 'bg-pink-100 text-pink-700 border-pink-400' 
+                                : 'bg-indigo-900 text-amber-300 border-indigo-500'
+                            }`}
+                          >
+                            <span>6</span>
+                            <span className="block text-[9px] opacity-90 leading-tight mt-0.5">일러코</span>
+                          </div>
+
+                          {[...Array(24)].map((_, i) => {
+                            const day = i + 7;
+                            const isSunday = (day + 2) % 7 === 1;
+                            const isSaturday = (day + 2) % 7 === 0;
+                            return (
+                              <div 
+                                key={day} 
+                                className={`p-2 rounded ${
+                                  isSunday ? 'text-rose-500/80' : isSaturday ? 'text-sky-500/80' : isBaepsae ? 'text-stone-400' : 'text-slate-500'
+                                }`}
+                              >
+                                {day}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Event Banner */}
+                    <div 
+                      onClick={() => setActiveTab('raid')}
+                      className={`p-4 md:p-5 rounded-xl border-2 shadow-lg cursor-pointer transition-all group relative overflow-hidden ${
+                        isBaepsae 
+                          ? 'bg-gradient-to-r from-pink-500 to-rose-400 border-pink-300 text-white' 
+                          : 'bg-gradient-to-r from-indigo-900/90 via-purple-900/90 to-indigo-900/90 border-indigo-500/60 text-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="px-2 py-0.5 bg-white/20 text-white text-[10px] font-extrabold rounded-md border border-white/30 animate-pulse">
+                          MAIN EVENT (9/4 ~ 9/6)
+                        </span>
+                        <span className="text-xs font-extrabold text-amber-200">D-DAY</span>
+                      </div>
+
+                      <h3 className="text-lg font-extrabold text-white group-hover:underline flex items-center space-x-1.5">
+                        <span>🎨 일러스트코리아 in aT</span>
+                      </h3>
+                      <p className="text-xs md:text-sm opacity-90 mt-1">
+                        양재 aT센터 1, 2홀 • 실시간 부스 완판 레이드 & 굿즈 교환 전용관
+                      </p>
+
+                      <div className="mt-3 pt-2 border-t border-white/20 flex items-center justify-between text-xs font-bold">
+                        <span>📍 aT센터 (양재시민의숲역)</span>
+                        <span className="group-hover:translate-x-1 transition-transform inline-block">
+                          🚨 현장 레이드 참여하기 →
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: RAID TAB */}
+                {activeTab === 'raid' && (
+                  <div className="space-y-4">
+                    
+                    {/* Congestion Summary Card */}
+                    <div className={`p-4 rounded-xl shadow-sm border space-y-3 relative overflow-hidden ${
+                      isBaepsae ? 'bg-white border-amber-200/80' : 'glass-panel-dark border-slate-800'
+                    }`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className={`text-xs mb-1 ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>현재 aT센터 혼잡도</p>
+                          <div className="flex items-center space-x-2">
+                            <span className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></span>
+                            <span className={`font-bold ${isBaepsae ? 'text-stone-800' : 'text-slate-100'}`}>입장 대기 30분 내외</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-xs mb-1 ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>티켓 발권</p>
+                          <span className={`px-2 py-1 text-xs font-bold rounded-md border ${
+                            isBaepsae 
+                              ? 'bg-emerald-100 text-emerald-700 border-emerald-300' 
+                              : 'bg-green-900/60 text-green-300 border-green-700/50'
+                          }`}>
+                            {congestion.ticketStatus}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={`grid grid-cols-3 gap-2 pt-2 border-t text-center ${
+                        isBaepsae ? 'border-amber-100' : 'border-slate-800'
+                      }`}>
+                        <div className={`p-2 rounded-lg border ${
+                          isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-800/60 border-slate-700/50'
+                        }`}>
+                          <p className={`text-[10px] ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>실시간 제보</p>
+                          <p className="text-sm font-extrabold text-amber-500 mt-0.5">{raidData.length}건</p>
+                        </div>
+                        <div className={`p-2 rounded-lg border ${
+                          isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-800/60 border-slate-700/50'
+                        }`}>
+                          <p className={`text-[10px] ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>교환 중</p>
+                          <p className={`text-sm font-extrabold mt-0.5 ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>{swapData.length}건</p>
+                        </div>
+                        <div className={`p-2 rounded-lg border ${
+                          isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-800/60 border-slate-700/50'
+                        }`}>
+                          <p className={`text-[10px] ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>전시장 현황</p>
+                          <p className="text-xs font-bold text-emerald-500 mt-1">쾌적</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filter Chips */}
+                    <div className="flex space-x-2 overflow-x-auto pb-1 scrollbar-hide">
+                      {[
+                        { id: 'ALL', label: '전체' },
+                        { id: 'WAIT', label: '대기열' },
+                        { id: 'SOLDOUT', label: '품절 소식' },
+                        { id: 'INFO', label: '부스 공지' }
+                      ].map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => setActiveFilter(f.id)}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-all ${
+                            activeFilter === f.id
+                              ? (isBaepsae ? 'bg-pink-500 text-white font-bold shadow-sm' : 'bg-slate-100 text-slate-900 font-bold')
+                              : (isBaepsae ? 'bg-white text-stone-600 border border-stone-200' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Raid Feed Timeline (Responsive 1-col on Mobile, 2-col on iPad/Tablet md:grid md:grid-cols-2) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {raidData
+                        .filter(item => activeFilter === 'ALL' || item.type === activeFilter || item.typeLabel === activeFilter)
+                        .map(item => {
+                          const isLowTrust = item.dislikes >= item.likes && item.dislikes > 0;
+
+                          return (
+                            <div 
+                              key={item.id} 
+                              className={`p-4 rounded-xl shadow-sm border flex space-x-3 items-start transition-all duration-300 relative ${
+                                isLowTrust ? 'opacity-50' : 'opacity-100'
+                              } ${
+                                isBaepsae ? 'bg-white border-amber-200/70' : 'glass-card border-slate-800'
+                              }`}
+                            >
+                              <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                item.type === 'SOLDOUT' ? 'bg-red-500/15 text-red-500 border border-red-300' :
+                                item.type === 'WAIT' ? 'bg-amber-500/15 text-amber-600 border border-amber-300' :
+                                'bg-blue-500/15 text-blue-600 border border-blue-300'
+                              }`}>
+                                {item.type === 'SOLDOUT' ? '품절' : item.type === 'WAIT' ? '대기' : '정보'}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-center mb-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`font-bold text-sm ${isBaepsae ? 'text-stone-900' : 'text-slate-100'}`}>
+                                      {item.booth}
+                                    </span>
+                                    {isLowTrust && (
+                                      <span className="px-2 py-0.5 bg-amber-500/20 text-amber-500 border border-amber-500/40 text-[10px] font-extrabold rounded-md flex items-center space-x-0.5 animate-pulse">
+                                        <span>⚠️</span>
+                                        <span>교차검증 필요</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  <span className={`text-xs font-semibold ${
+                                    item.isRecent 
+                                      ? 'text-rose-500 font-extrabold flex items-center space-x-0.5' 
+                                      : (isBaepsae ? 'text-stone-400' : 'text-slate-500')
+                                  }`}>
+                                    {item.isRecent && <span>🔥</span>}
+                                    <span>{item.time}</span>
+                                  </span>
+                                </div>
+
+                                <p className={`text-sm leading-snug ${isBaepsae ? 'text-stone-700' : 'text-slate-300'}`}>
+                                  {item.text}
+                                </p>
+
+                                <div className={`mt-2.5 pt-2 border-t flex items-center justify-between text-xs ${
+                                  isBaepsae ? 'border-stone-100' : 'border-slate-800/80'
+                                }`}>
+                                  <div className="flex items-center space-x-1">
+                                    <span className={`text-[11px] ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>
+                                      @{item.author}
+                                    </span>
+                                    {item.isVeteran && (
+                                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-extrabold rounded border border-amber-300 flex items-center space-x-0.5 shadow-2xs">
+                                        <span>👑</span>
+                                        <span>베테랑 뱁새</span>
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center space-x-1.5">
+                                    <button
+                                      onClick={() => handleLikeRaid(item.id)}
+                                      className={`px-2 py-1 rounded text-xs font-semibold border flex items-center space-x-1 transition-all ${
+                                        isBaepsae 
+                                          ? 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200' 
+                                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                                      }`}
+                                    >
+                                      <span>👍</span>
+                                      <span>{item.likes}</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleDislikeRaid(item.id)}
+                                      className={`px-2 py-1 rounded text-xs font-semibold border flex items-center space-x-1 transition-all ${
+                                        isLowTrust
+                                          ? 'bg-rose-500 text-white border-rose-600 font-bold'
+                                          : (isBaepsae 
+                                            ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200' 
+                                            : 'bg-rose-950/60 hover:bg-rose-900 text-rose-300 border-rose-800/60')
+                                      }`}
+                                      title="실제 정보와 다른 경우 피드백"
+                                    >
+                                      <span>👎</span>
+                                      <span>{item.dislikes || 0}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                  </div>
+                )}
+
+                {/* TAB 3: SWAP TAB */}
+                {activeTab === 'swap' && (
+                  <div className="space-y-4">
+                    {/* Search Bar */}
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="원하는 캐릭터나 부스를 검색하세요" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={`w-full px-4 py-3 rounded-lg text-sm border focus:outline-none focus:ring-2 shadow-sm ${
+                          isBaepsae 
+                            ? 'bg-white text-stone-800 border-amber-200 focus:ring-pink-400' 
+                            : 'bg-slate-900 text-white border-slate-800 focus:ring-indigo-500'
+                        }`} 
+                      />
+                    </div>
+
+                    {/* Swap Categories */}
+                    <div className="flex space-x-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                      {[
+                        { id: 'ALL', label: '전체 스왑' },
+                        ...swapTags.map(t => ({ id: t.id, label: t.label }))
+                      ].map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => setSelectedCategory(c.id)}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap border transition-all ${
+                            selectedCategory === c.id
+                              ? (isBaepsae ? 'bg-pink-500 text-white border-pink-500 font-bold' : 'bg-indigo-950 text-indigo-300 border-indigo-600 font-bold')
+                              : (isBaepsae ? 'bg-white text-stone-600 border-stone-200' : 'bg-slate-900 text-slate-400 border-slate-800')
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Swap Feed (Responsive 1-col on Mobile, 2-col on iPad/Tablet md:grid md:grid-cols-2) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {sortedSwapData
+                        .filter(s => {
+                          const mSearch = s.have.toLowerCase().includes(searchQuery.toLowerCase()) || s.want.toLowerCase().includes(searchQuery.toLowerCase()) || s.loc.toLowerCase().includes(searchQuery.toLowerCase());
+                          const mCat = selectedCategory === 'ALL' || s.category === selectedCategory || s.categoryLabel === selectedCategory;
+                          return mSearch && mCat;
+                        })
+                        .map(swap => (
+                          <div 
+                            key={swap.id} 
+                            className={`p-4 rounded-xl shadow-sm border ${
+                              swap.isBoosted 
+                                ? (isBaepsae ? 'bg-pink-50 border-pink-300 ring-1 ring-pink-200' : 'bg-yellow-950/20 border-yellow-500/50 ring-1 ring-yellow-500/30')
+                                : (isBaepsae ? 'bg-white border-amber-200/70' : 'glass-card border-slate-800')
+                            }`}
+                          >
+                            {swap.isBoosted && (
+                              <div className={`mb-2 flex items-center text-xs font-extrabold ${
+                                isBaepsae ? 'text-pink-600' : 'text-yellow-400'
+                              }`}>
+                                📢 100원 확성기로 상단 노출 중
+                              </div>
+                            )}
+
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="space-y-1.5 flex-1 pr-2">
+                                <div className="flex items-center text-sm">
+                                  <span className={`w-10 text-xs font-bold ${isBaepsae ? 'text-stone-400' : 'text-slate-400'}`}>양도</span>
+                                  <span className={`font-semibold ${isBaepsae ? 'text-stone-800' : 'text-slate-100'}`}>{swap.have}</span>
+                                </div>
+                                <div className="flex items-center text-sm">
+                                  <span className={`w-10 text-xs font-bold ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>구함</span>
+                                  <span className={`font-bold ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>{swap.want}</span>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => handleToggleSwapStatus(swap.id)}
+                                className={`px-2 py-1 text-xs font-bold rounded ${
+                                  swap.status === 'COMPLETED'
+                                    ? (isBaepsae ? 'bg-stone-200 text-stone-500' : 'bg-slate-800 text-slate-400')
+                                    : (isBaepsae ? 'bg-pink-100 text-pink-700 border border-pink-300' : 'bg-indigo-950 text-indigo-300 border border-indigo-700/50')
+                                }`}
+                              >
+                                {swap.status === 'COMPLETED' ? '교환완료' : '교환가능'}
+                              </button>
+                            </div>
+
+                            <div className={`pt-3 border-t flex justify-between items-center text-xs ${
+                              isBaepsae ? 'border-amber-100' : 'border-slate-800/60'
+                            }`}>
+                              <span className={`text-xs ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>📍 접선: {swap.loc}</span>
+                              <div className="flex space-x-1.5">
+                                <button 
+                                  onClick={() => setShareSwapCard(swap)}
+                                  className={`px-2 py-1 rounded text-[11px] ${
+                                    isBaepsae ? 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                  }`}
+                                >
+                                  🔗 공유 카드
+                                </button>
+                                {swap.status !== 'COMPLETED' && (
+                                  <button 
+                                    onClick={() => setPinnedLocationSwap(swap)}
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg ${
+                                      isBaepsae ? 'bg-stone-800 hover:bg-stone-900 text-white' : 'bg-slate-800 hover:bg-slate-700 text-white'
+                                    }`}
+                                  >
+                                    위치 핑
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+
+                  </div>
+                )}
+
+              </main>
+
+              {/* FAB Buttons */}
+              {activeTab === 'raid' && (
+                <button 
+                  onClick={() => setIsCreateRaidOpen(true)}
+                  className={`fixed sm:absolute bottom-20 right-4 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center text-2xl z-40 transition-all hover:scale-105 active:scale-95 ${
+                    isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                  }`}
+                  title="실시간 제보하기"
+                >
+                  +
+                </button>
+              )}
+
+              {activeTab === 'swap' && (
+                <button 
+                  onClick={() => setIsCreateSwapOpen(true)}
+                  className={`fixed sm:absolute bottom-20 right-4 text-white px-4 py-3.5 rounded-full shadow-xl font-bold text-xs flex items-center space-x-1.5 z-40 transition-all hover:scale-105 active:scale-95 ${
+                    isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                  }`}
+                >
+                  <span>🔄 굿즈 교환 글 올리기</span>
+                </button>
+              )}
+
+              {/* Fixed Bottom Navigation Bar (Visible on Mobile & iPad lg:hidden) */}
+              <nav className={`flex lg:hidden border-t sticky bottom-0 z-30 transition-colors duration-300 ${
+                isBaepsae 
+                  ? 'bg-white/95 backdrop-blur-md border-amber-200/80 text-stone-600' 
+                  : 'bg-slate-900/95 backdrop-blur-md border-slate-800 text-slate-400'
+              }`}>
+                <button 
+                  onClick={() => setActiveTab('scheduler')}
+                  className={`flex-1 py-2.5 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                    activeTab === 'scheduler' 
+                      ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
+                      : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
+                  }`}
+                >
+                  <span className="text-base">🗓️</span>
+                  <span>스케줄러</span>
+                </button>
+
+                <button 
+                  onClick={() => setActiveTab('raid')}
+                  className={`flex-1 py-2.5 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                    activeTab === 'raid' 
+                      ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
+                      : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
+                  }`}
+                >
+                  <span className="text-base">🚨</span>
+                  <span>현장 레이드</span>
+                </button>
+
+                <button 
+                  onClick={() => setActiveTab('swap')}
+                  className={`flex-1 py-2.5 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                    activeTab === 'swap' 
+                      ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
+                      : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
+                  }`}
+                >
+                  <span className="text-base">🔄</span>
+                  <span>굿즈 스왑</span>
+                </button>
+              </nav>
+
+            </div>
+
+            {/* DESKTOP RIGHT SIDEBAR (Visible only on Desktop lg:flex) */}
+            <aside className={`hidden lg:flex lg:w-80 flex-col space-y-4 p-5 rounded-3xl border shadow-xl transition-colors duration-300 h-fit sticky top-6 ${
+              isBaepsae ? 'bg-[#fdfcf9] border-amber-200/80' : 'bg-slate-900 border-slate-800'
+            }`}>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">실시간 전시장 현황</h3>
+              
+              {/* Congestion Widget */}
+              <div className={`p-3.5 rounded-xl border space-y-2 ${
+                isBaepsae ? 'bg-amber-50/60 border-amber-200 text-stone-800' : 'bg-slate-950 border-slate-800 text-slate-100'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold">aT센터 대기시간</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse"></span>
+                </div>
+                <p className="text-lg font-extrabold text-amber-500">30분 내외</p>
+                <p className="text-[11px] opacity-75">티켓: 현장 판매중</p>
+              </div>
+
+              {/* Infras Quick Preview Widget */}
+              <div className={`p-3.5 rounded-xl border space-y-2 ${
+                isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
+              }`}>
+                <p className="text-xs font-bold flex items-center justify-between">
+                  <span>🗺️ 전시장 인프라</span>
+                </p>
+                <div className="text-[11px] space-y-1 opacity-90">
+                  <p>🔐 <b>코인 락커:</b> 지하 1층 연결 통로</p>
+                  <p>🏧 <b>ATM:</b> 1층 로비 NH/KB기</p>
+                </div>
+                <button
+                  onClick={() => setIsInfrasModalOpen(true)}
+                  className="w-full py-1.5 bg-pink-500 text-white rounded-lg text-xs font-bold mt-1"
+                >
+                  부스 배치도 크게 보기
+                </button>
+              </div>
+            </aside>
+
+          </div>
+
+          {/* --- MODALS --- */}
+
+          {/* Infrastructure & Booth Map Modal */}
+          {isInfrasModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+              <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto scrollbar-hide relative ${
+                isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
+              }`}>
+                <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">ℹ️</span>
+                    <h3 className="text-base font-bold">aT센터 인프라 & 부스 배치도</h3>
+                  </div>
+                  <button onClick={() => setIsInfrasModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold flex items-center justify-between">
+                    <span>🗺️ 전시장 부스 배치도 (1, 2홀)</span>
+                    <span className="text-[10px] text-pink-600 font-normal">A~E 구역</span>
+                  </p>
+                  <div className={`p-4 rounded-xl border text-center space-y-3 relative overflow-hidden ${
+                    isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
+                  }`}>
+                    <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-bold">
+                      <div className="bg-pink-100 text-pink-700 p-3 rounded-lg border border-pink-200">
+                        A구역<br/><span className="text-[9px] font-normal opacity-80">일러스트/키링</span>
+                      </div>
+                      <div className="bg-purple-100 text-purple-700 p-3 rounded-lg border border-purple-200">
+                        B구역<br/><span className="text-[9px] font-normal opacity-80">스티커/지류</span>
+                      </div>
+                      <div className="bg-rose-100 text-rose-700 p-3 rounded-lg border border-rose-200">
+                        C구역<br/><span className="text-[9px] font-normal opacity-80">포스터/팬아트</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-center text-[11px] font-bold">
+                      <div className="bg-amber-100 text-amber-800 p-2.5 rounded-lg border border-amber-200">
+                        D구역 (회지/북)
+                      </div>
+                      <div className="bg-emerald-100 text-emerald-800 p-2.5 rounded-lg border border-emerald-200">
+                        E구역 (기업 팝업)
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-stone-500 pt-1 border-t border-stone-200 dark:border-slate-800">
+                      <span>🚪 메인 입구 (1층)</span>
+                      <span>☕ 1층 카페테리아</span>
+                      <span>🚪 물품보관소 출구</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`p-3 rounded-xl border space-y-1 ${
+                  isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
+                }`}>
+                  <div className="flex items-center space-x-2 text-xs font-bold text-pink-600">
+                    <span>🔐 코인 락커 (물품보관소) 위치</span>
+                  </div>
+                  <p className="text-xs font-bold">지하 1층 신분당선 연결 통로</p>
+                  <p className="text-[11px] opacity-80">소형 2,000원 / 대형 3,000원 (현금 및 교통카드 가능)</p>
+                </div>
+
+                <div className={`p-3 rounded-xl border space-y-1 ${
+                  isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
+                }`}>
+                  <div className="flex items-center space-x-2 text-xs font-bold text-emerald-600">
+                    <span>🏧 ATM 위치</span>
+                  </div>
+                  <p className="text-xs font-bold">1층 로비 농협 / 국민은행 ATM기</p>
+                  <p className="text-[11px] opacity-80">현장 현금 구매 및 이체 준비용 로비 위치</p>
+                </div>
+
+                <button 
+                  onClick={() => setIsInfrasModalOpen(false)}
+                  className="w-full py-2.5 bg-stone-800 text-white rounded-xl font-bold text-xs"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Create Raid Modal */}
+          {isCreateRaidOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+              <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 ${
+                isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
+              }`}>
+                <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
+                  <h3 className="text-base font-bold">🚨 실시간 현장 제보하기</h3>
+                  <button onClick={() => { setIsCreateRaidOpen(false); setIsAddingRaidTag(false); }} className="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+                
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target;
+                  handleAddRaid(form.booth.value, form.text.value);
+                  setIsCreateRaidOpen(false);
+                }} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold block mb-1.5">
+                      제보 유형 태그 선택 <span className="text-rose-500">*</span>
+                    </label>
+                    
+                    <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                      {sortedRaidTags.map((tag) => {
+                        const isSelected = selectedRaidTagId === tag.id;
+                        return (
+                          <button
+                            type="button"
+                            key={tag.id}
+                            onClick={() => setSelectedRaidTagId(tag.id)}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all border ${
+                              isSelected
+                                ? (isBaepsae ? 'bg-pink-500 text-white border-pink-500 shadow-sm scale-105' : 'bg-indigo-600 text-white border-indigo-500 shadow-sm scale-105')
+                                : (isBaepsae ? 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700')
+                            }`}
+                          >
+                            <span>{tag.label}</span>
+                            {tag.id === recentlyUsedRaidTagId && (
+                              <span className="ml-1 text-[9px] opacity-75">★</span>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingRaidTag(!isAddingRaidTag)}
+                        className={`px-2.5 py-1.5 text-xs font-extrabold rounded-xl border border-dashed flex items-center justify-center transition-all ${
+                          isBaepsae ? 'border-pink-400 text-pink-600 hover:bg-pink-50' : 'border-indigo-400 text-indigo-300 hover:bg-slate-800'
+                        }`}
+                        title="새 제보 태그 직접 추가"
+                      >
+                        <span>+</span>
+                      </button>
+                    </div>
+
+                    {isAddingRaidTag && (
+                      <div className="mt-2 flex space-x-1.5 animate-fadeIn">
+                        <input
+                          type="text"
+                          placeholder="새 제보 태그명 (예: 굿즈 증정, 이벤트)"
+                          value={customRaidInput}
+                          onChange={(e) => setCustomRaidInput(e.target.value)}
+                          className={`flex-1 border rounded-lg px-2.5 py-1.5 text-xs ${
+                            isBaepsae ? 'bg-stone-50 border-pink-300 text-stone-800' : 'bg-slate-800 border-indigo-500 text-white'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomRaidTag}
+                          className="px-3 py-1.5 bg-pink-500 text-white rounded-lg text-xs font-bold"
+                        >
+                          추가
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold block mb-1">부스 번호 / 위치</label>
+                    <input name="booth" placeholder="예: A-01 또는 입구" required className={`w-full border rounded-lg p-2.5 text-xs ${
+                      isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                    }`} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold block mb-1">제보 내용</label>
+                    <textarea name="text" rows={3} required placeholder="뱁새 키링 완판, 대기열 30분 등..." className={`w-full border rounded-lg p-2.5 text-xs ${
+                      isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                    }`}></textarea>
+                  </div>
+                  <button type="submit" className="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-bold text-xs shadow-md">
+                    제보 등록하기
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Create Swap Modal */}
+          {isCreateSwapOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+              <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 ${
+                isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
+              }`}>
+                <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
+                  <h3 className="text-base font-bold">🔄 굿즈 교환 글 올리기</h3>
+                  <button onClick={() => { setIsCreateSwapOpen(false); setIsAddingSwapTag(false); }} className="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target;
+                  handleAddSwap(form.have.value, form.want.value, form.loc.value, form.boosted.checked);
+                  setIsCreateSwapOpen(false);
+                }} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold block mb-1.5">
+                      카테고리 태그 선택 <span className="text-pink-600">*</span>
+                    </label>
+
+                    <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                      {sortedSwapTags.map((tag) => {
+                        const isSelected = selectedSwapTagId === tag.id;
+                        return (
+                          <button
+                            type="button"
+                            key={tag.id}
+                            onClick={() => setSelectedSwapTagId(tag.id)}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all border ${
+                              isSelected
+                                ? (isBaepsae ? 'bg-pink-500 text-white border-pink-500 shadow-sm scale-105' : 'bg-indigo-600 text-white border-indigo-500 shadow-sm scale-105')
+                                : (isBaepsae ? 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700')
+                            }`}
+                          >
+                            <span>{tag.label}</span>
+                            {tag.id === recentlyUsedSwapTagId && (
+                              <span className="ml-1 text-[9px] opacity-75">★</span>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingSwapTag(!isAddingSwapTag)}
+                        className={`px-2.5 py-1.5 text-xs font-extrabold rounded-xl border border-dashed flex items-center justify-center transition-all ${
+                          isBaepsae ? 'border-pink-400 text-pink-600 hover:bg-pink-50' : 'border-indigo-400 text-indigo-300 hover:bg-slate-800'
+                        }`}
+                        title="새 교환 카테고리 태그 직접 추가"
+                      >
+                        <span>+</span>
+                      </button>
+                    </div>
+
+                    {isAddingSwapTag && (
+                      <div className="mt-2 flex space-x-1.5 animate-fadeIn">
+                        <input
+                          type="text"
+                          placeholder="새 카테고리 태그명 (예: 캔뱃지, 코스프레)"
+                          value={customSwapInput}
+                          onChange={(e) => setCustomSwapInput(e.target.value)}
+                          className={`flex-1 border rounded-lg px-2.5 py-1.5 text-xs ${
+                            isBaepsae ? 'bg-stone-50 border-pink-300 text-stone-800' : 'bg-slate-800 border-indigo-500 text-white'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomSwapTag}
+                          className="px-3 py-1.5 bg-pink-500 text-white rounded-lg text-xs font-bold"
+                        >
+                          추가
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold block mb-1">양도 항목</label>
+                    <input name="have" required placeholder="예: A-04 부스 홀로그램 엽서" className={`w-full border rounded-lg p-2.5 text-xs ${
+                      isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                    }`} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-pink-600 block mb-1">구함 항목</label>
+                    <input name="want" required placeholder="예: B-02 작가님 아크릴 스탠드" className={`w-full border rounded-lg p-2.5 text-xs ${
+                      isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                    }`} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold block mb-1">접선 장소</label>
+                    <input name="loc" required placeholder="예: 1층 카페테리아 입구" className={`w-full border rounded-lg p-2.5 text-xs ${
+                      isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                    }`} />
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs font-bold text-pink-600">
+                    <input type="checkbox" name="boosted" id="b" />
+                    <label htmlFor="b">📢 100원 확성기로 상단 노출</label>
+                  </div>
+                  <button type="submit" className="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-bold text-xs shadow-md">
+                    등록하기
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Location Pin Modal */}
+          {pinnedLocationSwap && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+              <div className={`border w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center ${
+                isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
+              }`}>
+                <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
+                  <h3 className="text-sm font-bold">📍 접선 위치 핑</h3>
+                  <button onClick={() => setPinnedLocationSwap(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+                <div className={`p-4 rounded-xl border ${
+                  isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
+                }`}>
+                  <p className="text-base font-extrabold text-pink-600">{pinnedLocationSwap.loc}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(pinnedLocationSwap.loc);
+                    showToast('접선 위치가 복사되었습니다!');
+                    setPinnedLocationSwap(null);
+                  }}
+                  className="w-full py-2 bg-pink-500 text-white rounded-xl text-xs font-bold"
+                >
+                  위치 텍스트 복사
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Twitter / Blind Share Card Modal */}
+          {shareSwapCard && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+              <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 ${
+                isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
+              }`}>
+                <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
+                  <h3 className="text-sm font-bold">📢 블라인드 공유 카드</h3>
+                  <button onClick={() => setShareSwapCard(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+
+                <div className={`p-4 rounded-xl border space-y-2 ${
+                  isBaepsae ? 'bg-pink-50 border-pink-200' : 'bg-gradient-to-br from-indigo-950 to-slate-900 border-indigo-500/30'
+                }`}>
+                  <p className="text-xs font-bold text-pink-600">Ota-Cu Blind Swap Card</p>
+                  <p className="text-xs"><b>양도:</b> {shareSwapCard.have}</p>
+                  <p className="text-xs text-pink-600 font-bold"><b>구함:</b> {shareSwapCard.want}</p>
+                  <p className="text-[10px] opacity-75">📍 {shareSwapCard.loc}</p>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    const text = `[Ota-Cu 스왑] 🔄 ${shareSwapCard.have} 교환 원합니다!\n구함: ${shareSwapCard.want}\n📍 접선: ${shareSwapCard.loc}\n#일러스트코리아 #OtaCu #굿즈교환`;
+                    navigator.clipboard.writeText(text);
+                    showToast('공유 텍스트가 클립보드에 복사되었습니다!');
+                  }}
+                  className="w-full py-2.5 bg-pink-500 text-white rounded-xl text-xs font-bold"
+                >
+                  트위터 공유용 텍스트 복사
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Toast Notification */}
+          {toastMsg && (
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-pink-400 text-pink-200 px-4 py-2.5 rounded-xl shadow-xl text-xs font-bold animate-bounce">
+              {toastMsg}
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

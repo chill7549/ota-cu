@@ -77,20 +77,22 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // --- Subculture Illustration Festival Mock Data ---
-    const initialRaidData = [
+    const NOW = Date.now();
+
+    // Default Raid Mock Data with timestamps
+    const defaultRaidData = [
       { 
         id: 1, 
         booth: 'A-01', 
         type: 'SOLDOUT',
         typeLabel: '품절 소식', 
         text: '뱁새 아크릴 키링 현장 수량 완판입니다.', 
-        time: '방금 전', 
-        isRecent: true,
+        createdAt: NOW - 2 * 60 * 1000, // 2 mins ago
         likes: 14,
         dislikes: 1,
         author: 'booth_master',
-        isVeteran: true
+        isVeteran: true,
+        isMine: false
       },
       { 
         id: 2, 
@@ -98,12 +100,12 @@
         type: 'INFO', 
         typeLabel: '부스 공지',
         text: '작가님 점심 식사로 12시까지 부스 비움.', 
-        time: '5분 전', 
-        isRecent: true,
+        createdAt: NOW - 5 * 60 * 1000, // 5 mins ago
         likes: 8,
         dislikes: 0,
         author: 'bbabsae_artist',
-        isVeteran: true
+        isVeteran: true,
+        isMine: false
       },
       { 
         id: 3, 
@@ -111,12 +113,12 @@
         type: 'WAIT', 
         typeLabel: '대기열',
         text: '현재 현장 발권 대기열 30분 이상 소요됩니다.', 
-        time: '11:00 (35분 전)', 
-        isRecent: false,
+        createdAt: NOW - 35 * 60 * 1000, // 35 mins ago
         likes: 5,
-        dislikes: 5,
+        dislikes: 5, // Requirement: dislikes >= likes -> 50% opacity & ⚠️ 교차검증 필요 badge!
         author: 'visitor_otaku',
-        isVeteran: false
+        isVeteran: false,
+        isMine: false
       },
       { 
         id: 4, 
@@ -124,12 +126,12 @@
         type: 'SOLDOUT', 
         typeLabel: '품절 소식',
         text: '고양이 일러스트 엽서 세트 B타입 수량 소진되었습니다!', 
-        time: '10:45 (50분 전)', 
-        isRecent: false,
+        createdAt: NOW - 50 * 60 * 1000, // 50 mins ago
         likes: 21,
         dislikes: 2,
         author: 'cat_artist',
-        isVeteran: false
+        isVeteran: false,
+        isMine: false
       },
       { 
         id: 5, 
@@ -137,16 +139,17 @@
         type: 'INFO', 
         typeLabel: '부스 공지',
         text: '5만원 이상 구매 고객 한정 선착순 홀로그램 장바구니 증정 중입니다.', 
-        time: '10:20 (1시간 전)', 
-        isRecent: false,
+        createdAt: NOW - 65 * 60 * 1000, // 65 mins ago
         likes: 19,
         dislikes: 0,
-        author: 'd_booth',
-        isVeteran: true
+        author: 'Q_User', // My Post!
+        isVeteran: true,
+        isMine: true
       }
     ];
 
-    const initialSwapData = [
+    // Default Swap Mock Data with timestamps
+    const defaultSwapData = [
       { 
         id: 1, 
         have: 'A-04 부스 홀로그램 엽서', 
@@ -155,9 +158,10 @@
         isBoosted: true, 
         status: 'OPEN',
         author: 'card_collector',
-        time: '방금 전',
+        createdAt: NOW - 2 * 60 * 1000,
         category: 'STICKER',
-        categoryLabel: '스티커/지류'
+        categoryLabel: '스티커/지류',
+        isMine: false
       },
       { 
         id: 2, 
@@ -166,10 +170,11 @@
         loc: '2홀 출구 물품보관소 앞', 
         isBoosted: true, 
         status: 'OPEN',
-        author: 'goods_trader',
-        time: '5분 전',
+        author: 'Q_User', // My Post!
+        createdAt: NOW - 5 * 60 * 1000,
         category: 'KEYRING',
-        categoryLabel: '키링/아크릴'
+        categoryLabel: '키링/아크릴',
+        isMine: true
       },
       { 
         id: 3, 
@@ -179,9 +184,10 @@
         isBoosted: false, 
         status: 'OPEN',
         author: 'poster_fan',
-        time: '15분 전',
+        createdAt: NOW - 15 * 60 * 1000,
         category: 'POSTER',
-        categoryLabel: '포스터/회지'
+        categoryLabel: '포스터/회지',
+        isMine: false
       },
       { 
         id: 4, 
@@ -191,9 +197,10 @@
         isBoosted: false, 
         status: 'OPEN',
         author: 'illust_lover',
-        time: '30분 전',
+        createdAt: NOW - 30 * 60 * 1000,
         category: 'POSTER',
-        categoryLabel: '포스터/회지'
+        categoryLabel: '포스터/회지',
+        isMine: false
       },
       { 
         id: 5, 
@@ -203,9 +210,10 @@
         isBoosted: false, 
         status: 'COMPLETED',
         author: 'bench_collector',
-        time: '1시간 전',
+        createdAt: NOW - 60 * 60 * 1000,
         category: 'STICKER',
-        categoryLabel: '스티커/지류'
+        categoryLabel: '스티커/지류',
+        isMine: false
       }
     ];
 
@@ -218,26 +226,68 @@
       hallStatus: '쾌적'
     };
 
+    // Helper: Dynamic Real-time Relative Timestamp Formatter
+    function getRelativeTimeInfo(timestamp) {
+      if (!timestamp) return { text: '방금 전', isRecent: true };
+      const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+      if (diffSec < 60) return { text: '방금 전', isRecent: true };
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 10) return { text: `${diffMin}분 전`, isRecent: true };
+      if (diffMin < 60) return { text: `${diffMin}분 전`, isRecent: false };
+      const diffHour = Math.floor(diffMin / 60);
+      if (diffHour < 24) return { text: `${diffHour}시간 전`, isRecent: false };
+      return { text: `${Math.floor(diffHour / 24)}일 전`, isRecent: false };
+    }
+
     // --- Component: Main App ---
     function App() {
       // Theme State ('dark' | 'baepsae')
       const [theme, setTheme] = useState('dark');
       const isBaepsae = theme === 'baepsae';
 
+      // Current User Profile (Admin & My Posts marker)
+      const [currentUser, setCurrentUser] = useState({
+        login: 'Q_User',
+        name: '뱁새 관리자',
+        isAdmin: true
+      });
+
       // Navigation & Filters State
-      const [activeTab, setActiveTab] = useState('scheduler'); // 'scheduler' | 'raid' | 'swap'
+      const [activeTab, setActiveTab] = useState('scheduler');
       const [activeFilter, setActiveFilter] = useState('ALL');
 
-      const [raidData, setRaidData] = useState(initialRaidData);
-      const [swapData, setSwapData] = useState(initialSwapData);
-      const [congestion, setCongestion] = useState(initialCongestion);
+      // Requirement 2: Real-time Dynamic & Persistent Data via LocalStorage
+      const [raidData, setRaidData] = useState(() => {
+        const saved = localStorage.getItem('otacu_raid_data_v3');
+        return saved ? JSON.parse(saved) : defaultRaidData;
+      });
 
+      const [swapData, setSwapData] = useState(() => {
+        const saved = localStorage.getItem('otacu_swap_data_v3');
+        return saved ? JSON.parse(saved) : defaultSwapData;
+      });
+
+      const [congestion, setCongestion] = useState(initialCongestion);
       const [searchQuery, setSearchQuery] = useState('');
       const [selectedCategory, setSelectedCategory] = useState('ALL');
 
-      const [userProfile, setUserProfile] = useState({ login: 'Q_User', avatar: '' });
+      // Live Time Tick (force re-render every 10 sec to update real-time relative timestamps)
+      const [nowTick, setNowTick] = useState(Date.now());
+      useEffect(() => {
+        const timer = setInterval(() => setNowTick(Date.now()), 10000);
+        return () => clearInterval(timer);
+      }, []);
 
-      // Dynamic Tag Systems for Raid Modal
+      // Persist Raid & Swap data to localStorage whenever updated
+      useEffect(() => {
+        localStorage.setItem('otacu_raid_data_v3', JSON.stringify(raidData));
+      }, [raidData]);
+
+      useEffect(() => {
+        localStorage.setItem('otacu_swap_data_v3', JSON.stringify(swapData));
+      }, [swapData]);
+
+      // Tag Systems for Raid Modal
       const [raidTags, setRaidTags] = useState([
         { id: 'WAIT', label: '대기열', usage: 10, typeKey: 'WAIT' },
         { id: 'SOLDOUT', label: '품절 소식', usage: 8, typeKey: 'SOLDOUT' },
@@ -248,7 +298,7 @@
       const [isAddingRaidTag, setIsAddingRaidTag] = useState(false);
       const [customRaidInput, setCustomRaidInput] = useState('');
 
-      // Dynamic Tag Systems for Swap Modal
+      // Tag Systems for Swap Modal
       const [swapTags, setSwapTags] = useState([
         { id: 'STICKER', label: '스티커/지류', usage: 12 },
         { id: 'KEYRING', label: '키링/아크릴', usage: 9 },
@@ -266,25 +316,24 @@
       const [shareSwapCard, setShareSwapCard] = useState(null);
       const [pinnedLocationSwap, setPinnedLocationSwap] = useState(null);
 
-      // Toast
+      // Toast Notification
       const [toastMsg, setToastMsg] = useState('');
-
       const showToast = (msg) => {
         setToastMsg(msg);
         setTimeout(() => setToastMsg(''), 3000);
       };
 
-      // Service Worker Registration for PWA Standalone Mode
+      // Service Worker Registration
       useEffect(() => {
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Registration:', err));
         }
       }, []);
 
-      // Like & Dislike Handlers
+      // Requirement 2: Dynamic Likes & Dislikes Handlers (Persisted)
       const handleLikeRaid = (id) => {
         setRaidData(prev => prev.map(item => item.id === id ? { ...item, likes: item.likes + 1 } : item));
-        showToast('👍 도움돼요 추천이 반영되었습니다!');
+        showToast('👍 도움돼요 피드백이 실시간 저장되었습니다!');
       };
 
       const handleDislikeRaid = (id) => {
@@ -292,14 +341,25 @@
           if (item.id === id) {
             const updatedDislikes = item.dislikes + 1;
             if (updatedDislikes >= item.likes) {
-              showToast('⚠️ 정보가 달라요 피드백 누적으로 교차검증 필요 카드로 등록되었습니다.');
+              showToast('⚠️ 피드백 누적으로 해당 카드가 50% 투명도 및 교차검증 필요로 전환되었습니다.');
             } else {
-              showToast('👎 정보가 달라요 피드백이 기록되었습니다.');
+              showToast('👎 정보가 달라요 피드백이 실시간 반영되었습니다.');
             }
             return { ...item, dislikes: updatedDislikes };
           }
           return item;
         }));
+      };
+
+      // Delete Post (For Author / Admin)
+      const handleDeleteRaid = (id) => {
+        setRaidData(prev => prev.filter(item => item.id !== id));
+        showToast('🗑️ 게시글이 삭제되었습니다.');
+      };
+
+      const handleDeleteSwap = (id) => {
+        setSwapData(prev => prev.filter(item => item.id !== id));
+        showToast('🗑️ 스왑 게시글이 삭제되었습니다.');
       };
 
       // Add Custom Raid Tag
@@ -309,18 +369,13 @@
         if (!trimmed) return;
         
         const newTagId = `CUSTOM_RAID_${Date.now()}`;
-        const newTag = {
-          id: newTagId,
-          label: trimmed,
-          usage: 1,
-          typeKey: 'INFO'
-        };
+        const newTag = { id: newTagId, label: trimmed, usage: 1, typeKey: 'INFO' };
         setRaidTags(prev => [newTag, ...prev]);
         setSelectedRaidTagId(newTagId);
         setRecentlyUsedRaidTagId(newTagId);
         setCustomRaidInput('');
         setIsAddingRaidTag(false);
-        showToast(`'${trimmed}' 신규 제보 태스크 태그가 추가되었습니다!`);
+        showToast(`'${trimmed}' 태그가 새로 등록되었습니다!`);
       };
 
       // Add Custom Swap Tag
@@ -330,20 +385,16 @@
         if (!trimmed) return;
 
         const newTagId = `CUSTOM_SWAP_${Date.now()}`;
-        const newTag = {
-          id: newTagId,
-          label: trimmed,
-          usage: 1
-        };
+        const newTag = { id: newTagId, label: trimmed, usage: 1 };
         setSwapTags(prev => [newTag, ...prev]);
         setSelectedSwapTagId(newTagId);
         setRecentlyUsedSwapTagId(newTagId);
         setCustomSwapInput('');
         setIsAddingSwapTag(false);
-        showToast(`'${trimmed}' 신규 교환 카테고리 태그가 추가되었습니다!`);
+        showToast(`'${trimmed}' 카테고리 태그가 새로 등록되었습니다!`);
       };
 
-      // Add Raid Post
+      // Requirement 3: Add Post marked with isMine: true and currentUser info
       const handleAddRaid = (boothText, textContent) => {
         const activeTagObj = raidTags.find(t => t.id === selectedRaidTagId) || raidTags[0];
         setRaidTags(prev => prev.map(t => t.id === activeTagObj.id ? { ...t, usage: t.usage + 1 } : t));
@@ -355,18 +406,17 @@
           type: activeTagObj.typeKey || 'INFO',
           typeLabel: activeTagObj.label,
           text: textContent,
-          time: '방금 전',
-          isRecent: true,
+          createdAt: Date.now(), // Dynamic current timestamp
           likes: 1,
           dislikes: 0,
-          author: userProfile.login,
-          isVeteran: true
+          author: currentUser.login,
+          isVeteran: true,
+          isMine: true // Requirement 3: Marked as My Post
         };
         setRaidData([item, ...raidData]);
-        showToast('🚨 실시간 현장 레이드 제보가 등록되었습니다!');
+        showToast('🚨 내 제보가 실시간으로 등록되었습니다!');
       };
 
-      // Add Swap Post
       const handleAddSwap = (have, want, loc, isBoosted) => {
         const activeTagObj = swapTags.find(t => t.id === selectedSwapTagId) || swapTags[0];
         setSwapTags(prev => prev.map(t => t.id === activeTagObj.id ? { ...t, usage: t.usage + 1 } : t));
@@ -381,16 +431,17 @@
           categoryLabel: activeTagObj.label,
           isBoosted,
           status: 'OPEN',
-          author: userProfile.login,
-          time: '방금 전'
+          author: currentUser.login,
+          createdAt: Date.now(), // Dynamic current timestamp
+          isMine: true // Requirement 3: Marked as My Post
         };
         setSwapData([item, ...swapData]);
-        showToast('🔄 내 굿즈 교환 글이 등록되었습니다!');
+        showToast('🔄 내 굿즈 교환 글이 실시간 등록되었습니다!');
       };
 
       const handleToggleSwapStatus = (id) => {
         setSwapData(prev => prev.map(s => s.id === id ? { ...s, status: s.status === 'OPEN' ? 'COMPLETED' : 'OPEN' } : s));
-        showToast('교환 상태가 전환되었습니다.');
+        showToast('교환 상태가 동적 변경되었습니다.');
       };
 
       // Sort logic for Raid tags
@@ -429,7 +480,7 @@
           {/* MAIN RESPONSIVE CONTAINER (Mobile, iPad/Tablet, Desktop Dashboard) */}
           <div className="w-full min-h-screen flex flex-col lg:flex-row justify-center items-stretch max-w-7xl mx-auto lg:p-6 lg:gap-6">
             
-            {/* DESKTOP LEFT SIDEBAR (Visible only on Desktop lg:flex) */}
+            {/* DESKTOP LEFT SIDEBAR */}
             <aside className={`hidden lg:flex lg:w-80 flex-col space-y-4 p-5 rounded-3xl border shadow-xl transition-colors duration-300 h-fit sticky top-6 ${
               isBaepsae ? 'bg-[#fdfcf9] border-amber-200/80' : 'bg-slate-900 border-slate-800'
             }`}>
@@ -443,11 +494,11 @@
                   <h1 className={`text-2xl font-extrabold tracking-tight ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>
                     Ota-Cu
                   </h1>
-                  <span className={`text-[10px] px-2 py-0.5 font-bold rounded-md border ${
-                    isBaepsae ? 'bg-pink-100 text-pink-700 border-pink-300' : 'bg-indigo-950 text-indigo-300 border-indigo-700/50'
-                  }`}>
-                    v1.0 MVP PWA
-                  </span>
+                  <div className="flex items-center space-x-1 mt-0.5">
+                    <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-extrabold rounded border border-amber-300">
+                      👑 뱁새 관리자
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -500,48 +551,43 @@
               </div>
             </aside>
 
-            {/* CENTER / MAIN FEED CONTAINER (Mobile, iPad, Desktop Center) */}
+            {/* CENTER / MAIN FEED CONTAINER */}
             <div className={`w-full max-w-md md:max-w-2xl lg:max-w-xl mx-auto flex flex-col relative shadow-2xl lg:rounded-3xl overflow-hidden border-0 lg:border transition-colors duration-300 min-h-screen md:min-h-[850px] ${
               isBaepsae 
                 ? 'bg-[#fdfcf9] border-amber-200/80 shadow-pink-500/5' 
                 : 'bg-slate-900 border-slate-800'
             }`}>
               
-              {/* Header (Mobile & iPad View) */}
+              {/* Header */}
               <header className={`px-4 py-3 border-b flex justify-between items-center sticky top-0 z-30 shadow-sm transition-colors duration-300 ${
                 isBaepsae 
                   ? 'bg-white/90 backdrop-blur-md border-amber-200/60 text-stone-800' 
                   : 'bg-slate-900/90 backdrop-blur-md border-slate-800 text-slate-100'
               }`}>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg font-black shadow-sm ${
+                <div className="flex items-center space-x-2 min-w-0">
+                  <div className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-lg font-black shadow-sm ${
                     isBaepsae ? 'bg-pink-100 text-pink-600 border border-pink-200' : 'bg-indigo-600 text-white'
                   }`}>
                     {isBaepsae ? '🕊️' : '🎨'}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center space-x-1.5">
-                      <h1 className={`text-xl font-extrabold tracking-tight ${
+                      <h1 className={`text-xl font-extrabold tracking-tight truncate ${
                         isBaepsae ? 'text-pink-600' : 'text-indigo-400'
                       }`}>
                         Ota-Cu
                       </h1>
-                      <span className={`text-[10px] px-1.5 py-0.5 font-bold rounded-md border ${
-                        isBaepsae 
-                          ? 'bg-pink-100 text-pink-700 border-pink-300' 
-                          : 'bg-indigo-950 text-indigo-300 border-indigo-700/50'
-                      }`}>
-                        PWA App
+                      <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                        👑 관리자
                       </span>
                     </div>
-                    <p className={`text-[11px] font-medium ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>
+                    <p className={`text-[11px] font-medium truncate ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>
                       {congestion.eventName}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  {/* Theme Toggle Button */}
+                <div className="flex items-center space-x-2 shrink-0">
                   <button
                     onClick={() => setTheme(isBaepsae ? 'dark' : 'baepsae')}
                     className={`px-2.5 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center space-x-1 shadow-sm ${
@@ -549,12 +595,10 @@
                         ? 'bg-pink-100 text-pink-700 border-pink-300 hover:bg-pink-200' 
                         : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
                     }`}
-                    title="뱁새 웜 화이트 / 다크 테마 전환"
                   >
                     <span>{isBaepsae ? '🕊️ 뱁새' : '🌙 다크'}</span>
                   </button>
 
-                  {/* Infrastructure Button */}
                   <button
                     onClick={() => setIsInfrasModalOpen(true)}
                     className={`px-2 py-1.5 rounded-lg text-xs font-bold shadow-sm flex items-center space-x-1 border transition-all ${
@@ -562,14 +606,13 @@
                         ? 'bg-stone-100 text-stone-700 border-stone-300 hover:bg-stone-200' 
                         : 'bg-slate-800 text-indigo-300 border-slate-700 hover:bg-slate-700'
                     }`}
-                    title="aT센터 인프라 안내"
                   >
                     <span>ℹ️ 인프라</span>
                   </button>
                 </div>
               </header>
 
-              {/* Main Content Scrollable Area (Requirement 4: pb-40 added) */}
+              {/* Main Content Scrollable Area */}
               <main className="flex-1 overflow-y-auto p-4 space-y-4 relative scrollbar-hide pb-40">
                 
                 {/* TAB 1: SCHEDULER */}
@@ -777,20 +820,24 @@
                       ))}
                     </div>
 
-                    {/* Raid Feed Timeline (Responsive 1-col on Mobile, 2-col on iPad/Tablet md:grid md:grid-cols-2) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Requirement 1: Responsive Raid Cards Layout Fix (no overflow/vertical text breakages) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                       {raidData
                         .filter(item => activeFilter === 'ALL' || item.type === activeFilter || item.typeLabel === activeFilter)
                         .map(item => {
                           const isLowTrust = item.dislikes >= item.likes && item.dislikes > 0;
+                          const isMyPost = item.isMine || item.author === currentUser.login;
+                          const timeInfo = getRelativeTimeInfo(item.createdAt);
 
                           return (
                             <div 
                               key={item.id} 
-                              className={`p-4 rounded-xl shadow-sm border flex space-x-3 items-start transition-all duration-300 relative ${
+                              className={`p-4 rounded-xl shadow-sm border flex space-x-3 items-start transition-all duration-300 min-w-0 w-full overflow-hidden ${
                                 isLowTrust ? 'opacity-50' : 'opacity-100'
                               } ${
-                                isBaepsae ? 'bg-white border-amber-200/70' : 'glass-card border-slate-800'
+                                isMyPost 
+                                  ? (isBaepsae ? 'bg-pink-50/60 border-pink-400 ring-2 ring-pink-300/60' : 'bg-slate-800/90 border-pink-500 ring-2 ring-pink-500/40')
+                                  : (isBaepsae ? 'bg-white border-amber-200/70' : 'glass-card border-slate-800')
                               }`}
                             >
                               <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -801,12 +848,21 @@
                                 {item.type === 'SOLDOUT' ? '품절' : item.type === 'WAIT' ? '대기' : '정보'}
                               </div>
 
-                              <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1">
-                                  <div className="flex items-center space-x-2">
-                                    <span className={`font-bold text-sm ${isBaepsae ? 'text-stone-900' : 'text-slate-100'}`}>
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <div className="flex flex-wrap items-center justify-between gap-1 mb-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                                    <span className={`font-bold text-sm truncate ${isBaepsae ? 'text-stone-900' : 'text-slate-100'}`}>
                                       {item.booth}
                                     </span>
+
+                                    {/* Requirement 3: My Post Badge */}
+                                    {isMyPost && (
+                                      <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded-md shadow-xs">
+                                        👤 내가 작성함
+                                      </span>
+                                    )}
+
+                                    {/* Low Trust Badge */}
                                     {isLowTrust && (
                                       <span className="px-2 py-0.5 bg-amber-500/20 text-amber-500 border border-amber-500/40 text-[10px] font-extrabold rounded-md flex items-center space-x-0.5 animate-pulse">
                                         <span>⚠️</span>
@@ -815,36 +871,44 @@
                                     )}
                                   </div>
                                   
-                                  <span className={`text-xs font-semibold ${
-                                    item.isRecent 
-                                      ? 'text-rose-500 font-extrabold flex items-center space-x-0.5' 
+                                  {/* Requirement 2: Dynamic Real-time Relative Timestamp */}
+                                  <span className={`text-xs font-semibold shrink-0 ${
+                                    timeInfo.isRecent 
+                                      ? 'text-rose-500 font-extrabold' 
                                       : (isBaepsae ? 'text-stone-400' : 'text-slate-500')
                                   }`}>
-                                    {item.isRecent && <span>🔥</span>}
-                                    <span>{item.time}</span>
+                                    {timeInfo.text}
                                   </span>
                                 </div>
 
-                                <p className={`text-sm leading-snug ${isBaepsae ? 'text-stone-700' : 'text-slate-300'}`}>
+                                <p className={`text-sm leading-relaxed break-words whitespace-normal min-w-0 ${isBaepsae ? 'text-stone-700' : 'text-slate-300'}`}>
                                   {item.text}
                                 </p>
 
-                                <div className={`mt-2.5 pt-2 border-t flex items-center justify-between text-xs ${
+                                <div className={`mt-3 pt-2 border-t flex flex-wrap items-center justify-between gap-2 text-xs min-w-0 ${
                                   isBaepsae ? 'border-stone-100' : 'border-slate-800/80'
                                 }`}>
-                                  <div className="flex items-center space-x-1">
-                                    <span className={`text-[11px] ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>
+                                  <div className="flex flex-wrap items-center gap-1 min-w-0">
+                                    <span className={`text-[11px] truncate ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>
                                       @{item.author}
                                     </span>
-                                    {item.isVeteran && (
-                                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-extrabold rounded border border-amber-300 flex items-center space-x-0.5 shadow-2xs">
+
+                                    {/* Requirement 3: Admin & Veteran Badges */}
+                                    {isMyPost ? (
+                                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-extrabold rounded border border-amber-300 flex items-center space-x-0.5">
+                                        <span>👑</span>
+                                        <span>뱁새 관리자</span>
+                                      </span>
+                                    ) : item.isVeteran && (
+                                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-extrabold rounded border border-amber-300 flex items-center space-x-0.5">
                                         <span>👑</span>
                                         <span>베테랑 뱁새</span>
                                       </span>
                                     )}
                                   </div>
 
-                                  <div className="flex items-center space-x-1.5">
+                                  <div className="flex items-center space-x-1.5 shrink-0">
+                                    {/* Requirement 2: Real-time Persistent Likes & Dislikes */}
                                     <button
                                       onClick={() => handleLikeRaid(item.id)}
                                       className={`px-2 py-1 rounded text-xs font-semibold border flex items-center space-x-1 transition-all ${
@@ -871,6 +935,17 @@
                                       <span>👎</span>
                                       <span>{item.dislikes || 0}</span>
                                     </button>
+
+                                    {/* Delete Post Button for Author */}
+                                    {isMyPost && (
+                                      <button
+                                        onClick={() => handleDeleteRaid(item.id)}
+                                        className="px-1.5 py-1 text-[10px] text-rose-500 hover:text-rose-700 font-bold rounded"
+                                        title="게시글 삭제"
+                                      >
+                                        🗑️
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -920,82 +995,105 @@
                       ))}
                     </div>
 
-                    {/* Swap Feed (Responsive 1-col on Mobile, 2-col on iPad/Tablet md:grid md:grid-cols-2) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Requirement 1: Responsive Swap Feed Cards Layout Fix */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                       {sortedSwapData
                         .filter(s => {
                           const mSearch = s.have.toLowerCase().includes(searchQuery.toLowerCase()) || s.want.toLowerCase().includes(searchQuery.toLowerCase()) || s.loc.toLowerCase().includes(searchQuery.toLowerCase());
                           const mCat = selectedCategory === 'ALL' || s.category === selectedCategory || s.categoryLabel === selectedCategory;
                           return mSearch && mCat;
                         })
-                        .map(swap => (
-                          <div 
-                            key={swap.id} 
-                            className={`p-4 rounded-xl shadow-sm border ${
-                              swap.isBoosted 
-                                ? (isBaepsae ? 'bg-pink-50 border-pink-300 ring-1 ring-pink-200' : 'bg-yellow-950/20 border-yellow-500/50 ring-1 ring-yellow-500/30')
-                                : (isBaepsae ? 'bg-white border-amber-200/70' : 'glass-card border-slate-800')
-                            }`}
-                          >
-                            {swap.isBoosted && (
-                              <div className={`mb-2 flex items-center text-xs font-extrabold ${
-                                isBaepsae ? 'text-pink-600' : 'text-yellow-400'
+                        .map(swap => {
+                          const isMyPost = swap.isMine || swap.author === currentUser.login;
+                          const timeInfo = getRelativeTimeInfo(swap.createdAt);
+
+                          return (
+                            <div 
+                              key={swap.id} 
+                              className={`p-4 rounded-xl shadow-sm border min-w-0 w-full overflow-hidden transition-all ${
+                                isMyPost 
+                                  ? (isBaepsae ? 'bg-pink-50/70 border-pink-400 ring-2 ring-pink-300/60' : 'bg-slate-800/90 border-pink-500 ring-2 ring-pink-500/40')
+                                  : swap.isBoosted 
+                                    ? (isBaepsae ? 'bg-pink-50 border-pink-300 ring-1 ring-pink-200' : 'bg-yellow-950/20 border-yellow-500/50 ring-1 ring-yellow-500/30')
+                                    : (isBaepsae ? 'bg-white border-amber-200/70' : 'glass-card border-slate-800')
+                              }`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                                <div className="flex items-center space-x-1.5">
+                                  {swap.isBoosted && (
+                                    <span className={`text-xs font-extrabold ${isBaepsae ? 'text-pink-600' : 'text-yellow-400'}`}>
+                                      📢 100원 확성기
+                                    </span>
+                                  )}
+                                  {/* Requirement 3: My Post Badge */}
+                                  {isMyPost && (
+                                    <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded-md shadow-xs">
+                                      👤 내가 작성함
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {/* Requirement 2: Dynamic Real-time Relative Timestamp */}
+                                <span className={`text-[11px] font-semibold ${timeInfo.isRecent ? 'text-rose-500 font-extrabold' : 'text-stone-400'}`}>
+                                  {timeInfo.text}
+                                </span>
+                              </div>
+
+                              <div className="space-y-2 mb-3 min-w-0">
+                                <div className="flex items-start gap-2 min-w-0">
+                                  <span className={`shrink-0 text-xs font-bold px-1.5 py-0.5 rounded ${isBaepsae ? 'bg-stone-100 text-stone-600' : 'bg-slate-800 text-slate-400'}`}>양도</span>
+                                  <span className={`text-sm font-semibold break-words whitespace-normal min-w-0 ${isBaepsae ? 'text-stone-800' : 'text-slate-100'}`}>
+                                    {swap.have}
+                                  </span>
+                                </div>
+                                <div className="flex items-start gap-2 min-w-0">
+                                  <span className={`shrink-0 text-xs font-bold px-1.5 py-0.5 rounded ${isBaepsae ? 'bg-pink-100 text-pink-700' : 'bg-indigo-950 text-indigo-300'}`}>구함</span>
+                                  <span className={`text-sm font-bold break-words whitespace-normal min-w-0 ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>
+                                    {swap.want}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className={`pt-3 border-t flex flex-wrap items-center justify-between gap-2 text-xs min-w-0 ${
+                                isBaepsae ? 'border-amber-100' : 'border-slate-800/60'
                               }`}>
-                                📢 100원 확성기로 상단 노출 중
-                              </div>
-                            )}
-
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="space-y-1.5 flex-1 pr-2">
-                                <div className="flex items-center text-sm">
-                                  <span className={`w-10 text-xs font-bold ${isBaepsae ? 'text-stone-400' : 'text-slate-400'}`}>양도</span>
-                                  <span className={`font-semibold ${isBaepsae ? 'text-stone-800' : 'text-slate-100'}`}>{swap.have}</span>
-                                </div>
-                                <div className="flex items-center text-sm">
-                                  <span className={`w-10 text-xs font-bold ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>구함</span>
-                                  <span className={`font-bold ${isBaepsae ? 'text-pink-600' : 'text-indigo-400'}`}>{swap.want}</span>
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => handleToggleSwapStatus(swap.id)}
-                                className={`px-2 py-1 text-xs font-bold rounded ${
-                                  swap.status === 'COMPLETED'
-                                    ? (isBaepsae ? 'bg-stone-200 text-stone-500' : 'bg-slate-800 text-slate-400')
-                                    : (isBaepsae ? 'bg-pink-100 text-pink-700 border border-pink-300' : 'bg-indigo-950 text-indigo-300 border border-indigo-700/50')
-                                }`}
-                              >
-                                {swap.status === 'COMPLETED' ? '교환완료' : '교환가능'}
-                              </button>
-                            </div>
-
-                            <div className={`pt-3 border-t flex justify-between items-center text-xs ${
-                              isBaepsae ? 'border-amber-100' : 'border-slate-800/60'
-                            }`}>
-                              <span className={`text-xs ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>📍 접선: {swap.loc}</span>
-                              <div className="flex space-x-1.5">
-                                <button 
-                                  onClick={() => setShareSwapCard(swap)}
-                                  className={`px-2 py-1 rounded text-[11px] ${
-                                    isBaepsae ? 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                                  }`}
-                                >
-                                  🔗 공유 카드
-                                </button>
-                                {swap.status !== 'COMPLETED' && (
-                                  <button 
-                                    onClick={() => setPinnedLocationSwap(swap)}
-                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg ${
-                                      isBaepsae ? 'bg-stone-800 hover:bg-stone-900 text-white' : 'bg-slate-800 hover:bg-slate-700 text-white'
+                                <span className={`text-xs truncate min-w-0 max-w-[180px] ${isBaepsae ? 'text-stone-500' : 'text-slate-400'}`}>📍 {swap.loc}</span>
+                                
+                                <div className="flex items-center space-x-1.5 shrink-0">
+                                  <button
+                                    onClick={() => handleToggleSwapStatus(swap.id)}
+                                    className={`px-2 py-1 text-xs font-bold rounded ${
+                                      swap.status === 'COMPLETED'
+                                        ? (isBaepsae ? 'bg-stone-200 text-stone-500' : 'bg-slate-800 text-slate-400')
+                                        : (isBaepsae ? 'bg-pink-100 text-pink-700 border border-pink-300' : 'bg-indigo-950 text-indigo-300 border border-indigo-700/50')
                                     }`}
                                   >
-                                    위치 핑
+                                    {swap.status === 'COMPLETED' ? '완료' : '교환가능'}
                                   </button>
-                                )}
+
+                                  <button 
+                                    onClick={() => setShareSwapCard(swap)}
+                                    className={`px-2 py-1 rounded text-[11px] ${
+                                      isBaepsae ? 'bg-stone-100 text-stone-700 border border-stone-200' : 'bg-slate-800 text-slate-300'
+                                    }`}
+                                  >
+                                    공유
+                                  </button>
+
+                                  {isMyPost && (
+                                    <button
+                                      onClick={() => handleDeleteSwap(swap.id)}
+                                      className="px-1 py-1 text-[10px] text-rose-500 hover:text-rose-700 font-bold rounded"
+                                      title="삭제"
+                                    >
+                                      🗑️
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
 
                   </div>
@@ -1027,7 +1125,7 @@
                 </button>
               )}
 
-              {/* Fixed Bottom Navigation Bar (Visible on Mobile & iPad lg:hidden) */}
+              {/* Fixed Bottom Navigation Bar */}
               <nav className={`flex lg:hidden border-t sticky bottom-0 z-30 transition-colors duration-300 ${
                 isBaepsae 
                   ? 'bg-white/95 backdrop-blur-md border-amber-200/80 text-stone-600' 
@@ -1072,7 +1170,7 @@
 
             </div>
 
-            {/* DESKTOP RIGHT SIDEBAR (Visible only on Desktop lg:flex) */}
+            {/* DESKTOP RIGHT SIDEBAR */}
             <aside className={`hidden lg:flex lg:w-80 flex-col space-y-4 p-5 rounded-3xl border shadow-xl transition-colors duration-300 h-fit sticky top-6 ${
               isBaepsae ? 'bg-[#fdfcf9] border-amber-200/80' : 'bg-slate-900 border-slate-800'
             }`}>
@@ -1284,7 +1382,7 @@
                     }`}></textarea>
                   </div>
                   <button type="submit" className="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-bold text-xs shadow-md">
-                    제보 등록하기
+                    제보 등록하기 (관리자 등록)
                   </button>
                 </form>
               </div>
@@ -1392,50 +1490,21 @@
                     <label htmlFor="b">📢 100원 확성기로 상단 노출</label>
                   </div>
                   <button type="submit" className="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-bold text-xs shadow-md">
-                    등록하기
+                    등록하기 (관리자 등록)
                   </button>
                 </form>
               </div>
             </div>
           )}
 
-          {/* Location Pin Modal */}
-          {pinnedLocationSwap && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-              <div className={`border w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center ${
-                isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
-              }`}>
-                <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
-                  <h3 className="text-sm font-bold">📍 접선 위치 핑</h3>
-                  <button onClick={() => setPinnedLocationSwap(null)} className="text-slate-400 hover:text-slate-600">✕</button>
-                </div>
-                <div className={`p-4 rounded-xl border ${
-                  isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
-                }`}>
-                  <p className="text-base font-extrabold text-pink-600">{pinnedLocationSwap.loc}</p>
-                </div>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(pinnedLocationSwap.loc);
-                    showToast('접선 위치가 복사되었습니다!');
-                    setPinnedLocationSwap(null);
-                  }}
-                  className="w-full py-2 bg-pink-500 text-white rounded-xl text-xs font-bold"
-                >
-                  위치 텍스트 복사
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Twitter / Blind Share Card Modal */}
+          {/* Share Swap Card Modal */}
           {shareSwapCard && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
               <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 ${
                 isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
               }`}>
                 <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
-                  <h3 className="text-sm font-bold">📢 블라인드 공유 카드</h3>
+                  <h3 className="text-sm font-bold">📢 공유 카드</h3>
                   <button onClick={() => setShareSwapCard(null)} className="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
 

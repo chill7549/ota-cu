@@ -1,12 +1,11 @@
-// Ota-Cu Service Worker for PWA App Support - v2 (Auto Cache Purge)
-const CACHE_NAME = 'otacu-cache-v2';
+// Ota-Cu Service Worker for PWA App Support - v3 (Safe Area Inset & Cache Purge)
+const CACHE_NAME = 'otacu-cache-v3';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json'
 ];
 
-// Install Event: Skip waiting to activate immediately
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -16,7 +15,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event: Purge old cache v1 automatically
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -32,12 +30,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Network first, fallback to cache
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache copy of latest fetch
         if (response && response.status === 200 && response.type === 'basic') {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {

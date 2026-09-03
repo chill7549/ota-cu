@@ -68,6 +68,17 @@
       backdrop-filter: blur(16px);
       border: 1px solid rgba(251, 207, 232, 0.6);
     }
+
+    /* Mobile Safe Area Inset Classes (Dynamic Island / Notch / Status Bar & Home Indicator) */
+    .header-safe-top {
+      padding-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
+    }
+    .nav-safe-bottom {
+      padding-bottom: max(0.625rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem));
+    }
+    .fab-safe-bottom {
+      bottom: max(5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
+    }
   </style>
 </head>
 <body class="antialiased selection:bg-pink-500 selection:text-white min-h-screen">
@@ -87,7 +98,7 @@
         type: 'SOLDOUT',
         typeLabel: '품절 소식', 
         text: '뱁새 아크릴 키링 현장 수량 완판입니다.', 
-        createdAt: NOW - 2 * 60 * 1000, // 2 mins ago
+        createdAt: NOW - 2 * 60 * 1000,
         likes: 14,
         dislikes: 1,
         author: 'booth_master',
@@ -100,7 +111,7 @@
         type: 'INFO', 
         typeLabel: '부스 공지',
         text: '작가님 점심 식사로 12시까지 부스 비움.', 
-        createdAt: NOW - 5 * 60 * 1000, // 5 mins ago
+        createdAt: NOW - 5 * 60 * 1000,
         likes: 8,
         dislikes: 0,
         author: 'bbabsae_artist',
@@ -113,9 +124,9 @@
         type: 'WAIT', 
         typeLabel: '대기열',
         text: '현재 현장 발권 대기열 30분 이상 소요됩니다.', 
-        createdAt: NOW - 35 * 60 * 1000, // 35 mins ago
+        createdAt: NOW - 35 * 60 * 1000,
         likes: 5,
-        dislikes: 5, // Requirement: dislikes >= likes -> 50% opacity & ⚠️ 교차검증 필요 badge!
+        dislikes: 5,
         author: 'visitor_otaku',
         isVeteran: false,
         isMine: false
@@ -126,7 +137,7 @@
         type: 'SOLDOUT', 
         typeLabel: '품절 소식',
         text: '고양이 일러스트 엽서 세트 B타입 수량 소진되었습니다!', 
-        createdAt: NOW - 50 * 60 * 1000, // 50 mins ago
+        createdAt: NOW - 50 * 60 * 1000,
         likes: 21,
         dislikes: 2,
         author: 'cat_artist',
@@ -139,10 +150,10 @@
         type: 'INFO', 
         typeLabel: '부스 공지',
         text: '5만원 이상 구매 고객 한정 선착순 홀로그램 장바구니 증정 중입니다.', 
-        createdAt: NOW - 65 * 60 * 1000, // 65 mins ago
+        createdAt: NOW - 65 * 60 * 1000,
         likes: 19,
         dislikes: 0,
-        author: 'Q_User', // My Post!
+        author: 'Q_User',
         isVeteran: true,
         isMine: true
       }
@@ -170,7 +181,7 @@
         loc: '2홀 출구 물품보관소 앞', 
         isBoosted: true, 
         status: 'OPEN',
-        author: 'Q_User', // My Post!
+        author: 'Q_User',
         createdAt: NOW - 5 * 60 * 1000,
         category: 'KEYRING',
         categoryLabel: '키링/아크릴',
@@ -256,7 +267,7 @@
       const [activeTab, setActiveTab] = useState('scheduler');
       const [activeFilter, setActiveFilter] = useState('ALL');
 
-      // Requirement 2: Real-time Dynamic & Persistent Data via LocalStorage
+      // Real-time Dynamic & Persistent Data via LocalStorage
       const [raidData, setRaidData] = useState(() => {
         const saved = localStorage.getItem('otacu_raid_data_v3');
         return saved ? JSON.parse(saved) : defaultRaidData;
@@ -271,14 +282,14 @@
       const [searchQuery, setSearchQuery] = useState('');
       const [selectedCategory, setSelectedCategory] = useState('ALL');
 
-      // Live Time Tick (force re-render every 10 sec to update real-time relative timestamps)
+      // Live Time Tick
       const [nowTick, setNowTick] = useState(Date.now());
       useEffect(() => {
         const timer = setInterval(() => setNowTick(Date.now()), 10000);
         return () => clearInterval(timer);
       }, []);
 
-      // Persist Raid & Swap data to localStorage whenever updated
+      // Persist Raid & Swap data
       useEffect(() => {
         localStorage.setItem('otacu_raid_data_v3', JSON.stringify(raidData));
       }, [raidData]);
@@ -330,10 +341,10 @@
         }
       }, []);
 
-      // Requirement 2: Dynamic Likes & Dislikes Handlers (Persisted)
+      // Dynamic Likes & Dislikes Handlers
       const handleLikeRaid = (id) => {
         setRaidData(prev => prev.map(item => item.id === id ? { ...item, likes: item.likes + 1 } : item));
-        showToast('👍 도움돼요 피드백이 실시간 저장되었습니다!');
+        showToast('👍 도움돼요 피드백이 반영되었습니다!');
       };
 
       const handleDislikeRaid = (id) => {
@@ -343,7 +354,7 @@
             if (updatedDislikes >= item.likes) {
               showToast('⚠️ 피드백 누적으로 해당 카드가 50% 투명도 및 교차검증 필요로 전환되었습니다.');
             } else {
-              showToast('👎 정보가 달라요 피드백이 실시간 반영되었습니다.');
+              showToast('👎 정보가 달라요 피드백이 반영되었습니다.');
             }
             return { ...item, dislikes: updatedDislikes };
           }
@@ -351,7 +362,7 @@
         }));
       };
 
-      // Delete Post (For Author / Admin)
+      // Delete Post
       const handleDeleteRaid = (id) => {
         setRaidData(prev => prev.filter(item => item.id !== id));
         showToast('🗑️ 게시글이 삭제되었습니다.');
@@ -394,7 +405,7 @@
         showToast(`'${trimmed}' 카테고리 태그가 새로 등록되었습니다!`);
       };
 
-      // Requirement 3: Add Post marked with isMine: true and currentUser info
+      // Add Post
       const handleAddRaid = (boothText, textContent) => {
         const activeTagObj = raidTags.find(t => t.id === selectedRaidTagId) || raidTags[0];
         setRaidTags(prev => prev.map(t => t.id === activeTagObj.id ? { ...t, usage: t.usage + 1 } : t));
@@ -406,12 +417,12 @@
           type: activeTagObj.typeKey || 'INFO',
           typeLabel: activeTagObj.label,
           text: textContent,
-          createdAt: Date.now(), // Dynamic current timestamp
+          createdAt: Date.now(),
           likes: 1,
           dislikes: 0,
           author: currentUser.login,
           isVeteran: true,
-          isMine: true // Requirement 3: Marked as My Post
+          isMine: true
         };
         setRaidData([item, ...raidData]);
         showToast('🚨 내 제보가 실시간으로 등록되었습니다!');
@@ -432,8 +443,8 @@
           isBoosted,
           status: 'OPEN',
           author: currentUser.login,
-          createdAt: Date.now(), // Dynamic current timestamp
-          isMine: true // Requirement 3: Marked as My Post
+          createdAt: Date.now(),
+          isMine: true
         };
         setSwapData([item, ...swapData]);
         showToast('🔄 내 굿즈 교환 글이 실시간 등록되었습니다!');
@@ -558,11 +569,11 @@
                 : 'bg-slate-900 border-slate-800'
             }`}>
               
-              {/* Header */}
-              <header className={`px-4 py-3 border-b flex justify-between items-center sticky top-0 z-30 shadow-sm transition-colors duration-300 ${
+              {/* Header with Mobile Safe Area Support (header-safe-top) */}
+              <header className={`px-4 pb-3 border-b flex justify-between items-center sticky top-0 z-30 shadow-sm transition-colors duration-300 header-safe-top ${
                 isBaepsae 
-                  ? 'bg-white/90 backdrop-blur-md border-amber-200/60 text-stone-800' 
-                  : 'bg-slate-900/90 backdrop-blur-md border-slate-800 text-slate-100'
+                  ? 'bg-white/95 backdrop-blur-md border-amber-200/60 text-stone-800' 
+                  : 'bg-slate-900/95 backdrop-blur-md border-slate-800 text-slate-100'
               }`}>
                 <div className="flex items-center space-x-2 min-w-0">
                   <div className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-lg font-black shadow-sm ${
@@ -613,7 +624,7 @@
               </header>
 
               {/* Main Content Scrollable Area */}
-              <main className="flex-1 overflow-y-auto p-4 space-y-4 relative scrollbar-hide pb-40">
+              <main className="flex-1 overflow-y-auto p-4 space-y-4 relative scrollbar-hide pb-44">
                 
                 {/* TAB 1: SCHEDULER */}
                 {activeTab === 'scheduler' && (
@@ -820,7 +831,7 @@
                       ))}
                     </div>
 
-                    {/* Requirement 1: Responsive Raid Cards Layout Fix (no overflow/vertical text breakages) */}
+                    {/* Raid Cards Layout */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                       {raidData
                         .filter(item => activeFilter === 'ALL' || item.type === activeFilter || item.typeLabel === activeFilter)
@@ -855,7 +866,7 @@
                                       {item.booth}
                                     </span>
 
-                                    {/* Requirement 3: My Post Badge */}
+                                    {/* My Post Badge */}
                                     {isMyPost && (
                                       <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded-md shadow-xs">
                                         👤 내가 작성함
@@ -871,7 +882,6 @@
                                     )}
                                   </div>
                                   
-                                  {/* Requirement 2: Dynamic Real-time Relative Timestamp */}
                                   <span className={`text-xs font-semibold shrink-0 ${
                                     timeInfo.isRecent 
                                       ? 'text-rose-500 font-extrabold' 
@@ -893,7 +903,6 @@
                                       @{item.author}
                                     </span>
 
-                                    {/* Requirement 3: Admin & Veteran Badges */}
                                     {isMyPost ? (
                                       <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-extrabold rounded border border-amber-300 flex items-center space-x-0.5">
                                         <span>👑</span>
@@ -908,7 +917,6 @@
                                   </div>
 
                                   <div className="flex items-center space-x-1.5 shrink-0">
-                                    {/* Requirement 2: Real-time Persistent Likes & Dislikes */}
                                     <button
                                       onClick={() => handleLikeRaid(item.id)}
                                       className={`px-2 py-1 rounded text-xs font-semibold border flex items-center space-x-1 transition-all ${
@@ -936,7 +944,6 @@
                                       <span>{item.dislikes || 0}</span>
                                     </button>
 
-                                    {/* Delete Post Button for Author */}
                                     {isMyPost && (
                                       <button
                                         onClick={() => handleDeleteRaid(item.id)}
@@ -995,7 +1002,7 @@
                       ))}
                     </div>
 
-                    {/* Requirement 1: Responsive Swap Feed Cards Layout Fix */}
+                    {/* Swap Cards Layout */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                       {sortedSwapData
                         .filter(s => {
@@ -1025,7 +1032,6 @@
                                       📢 100원 확성기
                                     </span>
                                   )}
-                                  {/* Requirement 3: My Post Badge */}
                                   {isMyPost && (
                                     <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded-md shadow-xs">
                                       👤 내가 작성함
@@ -1033,7 +1039,6 @@
                                   )}
                                 </div>
                                 
-                                {/* Requirement 2: Dynamic Real-time Relative Timestamp */}
                                 <span className={`text-[11px] font-semibold ${timeInfo.isRecent ? 'text-rose-500 font-extrabold' : 'text-stone-400'}`}>
                                   {timeInfo.text}
                                 </span>
@@ -1101,11 +1106,11 @@
 
               </main>
 
-              {/* FAB Buttons */}
+              {/* Floating Action Buttons (FAB with safe area bottom) */}
               {activeTab === 'raid' && (
                 <button 
                   onClick={() => setIsCreateRaidOpen(true)}
-                  className={`fixed sm:absolute bottom-20 right-4 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center text-2xl z-40 transition-all hover:scale-105 active:scale-95 ${
+                  className={`fixed sm:absolute fab-safe-bottom right-4 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center text-2xl z-40 transition-all hover:scale-105 active:scale-95 ${
                     isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
                   }`}
                   title="실시간 제보하기"
@@ -1117,7 +1122,7 @@
               {activeTab === 'swap' && (
                 <button 
                   onClick={() => setIsCreateSwapOpen(true)}
-                  className={`fixed sm:absolute bottom-20 right-4 text-white px-4 py-3.5 rounded-full shadow-xl font-bold text-xs flex items-center space-x-1.5 z-40 transition-all hover:scale-105 active:scale-95 ${
+                  className={`fixed sm:absolute fab-safe-bottom right-4 text-white px-4 py-3.5 rounded-full shadow-xl font-bold text-xs flex items-center space-x-1.5 z-40 transition-all hover:scale-105 active:scale-95 ${
                     isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
                   }`}
                 >
@@ -1125,15 +1130,15 @@
                 </button>
               )}
 
-              {/* Fixed Bottom Navigation Bar */}
-              <nav className={`flex lg:hidden border-t sticky bottom-0 z-30 transition-colors duration-300 ${
+              {/* Fixed Bottom Navigation Bar with Safe Area Bottom Padding (nav-safe-bottom) */}
+              <nav className={`flex lg:hidden border-t sticky bottom-0 z-30 transition-colors duration-300 nav-safe-bottom ${
                 isBaepsae 
                   ? 'bg-white/95 backdrop-blur-md border-amber-200/80 text-stone-600' 
                   : 'bg-slate-900/95 backdrop-blur-md border-slate-800 text-slate-400'
               }`}>
                 <button 
                   onClick={() => setActiveTab('scheduler')}
-                  className={`flex-1 py-2.5 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                  className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
                     activeTab === 'scheduler' 
                       ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
                       : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
@@ -1145,7 +1150,7 @@
 
                 <button 
                   onClick={() => setActiveTab('raid')}
-                  className={`flex-1 py-2.5 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                  className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
                     activeTab === 'raid' 
                       ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
                       : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
@@ -1157,7 +1162,7 @@
 
                 <button 
                   onClick={() => setActiveTab('swap')}
-                  className={`flex-1 py-2.5 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                  className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
                     activeTab === 'swap' 
                       ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
                       : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
@@ -1176,7 +1181,6 @@
             }`}>
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">실시간 전시장 현황</h3>
               
-              {/* Congestion Widget */}
               <div className={`p-3.5 rounded-xl border space-y-2 ${
                 isBaepsae ? 'bg-amber-50/60 border-amber-200 text-stone-800' : 'bg-slate-950 border-slate-800 text-slate-100'
               }`}>
@@ -1188,7 +1192,6 @@
                 <p className="text-[11px] opacity-75">티켓: 현장 판매중</p>
               </div>
 
-              {/* Infras Quick Preview Widget */}
               <div className={`p-3.5 rounded-xl border space-y-2 ${
                 isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
               }`}>
@@ -1210,9 +1213,7 @@
 
           </div>
 
-          {/* --- MODALS --- */}
-
-          {/* Infrastructure & Booth Map Modal */}
+          {/* MODALS */}
           {isInfrasModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
               <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto scrollbar-hide relative ${

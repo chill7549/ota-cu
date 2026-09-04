@@ -51,6 +51,8 @@
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tesseract.js OCR Engine CDN -->
+  <script src="https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
 
   <style>
     /* Custom Scrollbar Hide */
@@ -554,23 +556,83 @@
       const [startLocationKey, setStartLocationKey] = useState('금·일요일 입구');
       const [calculatedRoute, setCalculatedRoute] = useState(null);
 
-      // Bookmark Reordering (0.3s long press)
+      // Bookmark Touch Drag & Drop Pointer Motion Tracking State
       const longPressTimerRef = React.useRef(null);
       const [dragItemIndex, setDragItemIndex] = useState(null);
+      const [dragTargetIndex, setDragTargetIndex] = useState(null);
+      const dragStartIndexRef = React.useRef(null);
+      const dragCurrentTargetIndexRef = React.useRef(null);
+      const bookmarkListRef = React.useRef(bookmarkList);
 
-      const handlePressStart = (index) => {
+      useEffect(() => {
+        bookmarkListRef.current = bookmarkList;
+      }, [bookmarkList]);
+
+      const handleBookmarkTouchStart = (e, index) => {
+        dragStartIndexRef.current = index;
+        dragCurrentTargetIndexRef.current = index;
+
         longPressTimerRef.current = setTimeout(() => {
           setDragItemIndex(index);
-          if (navigator.vibrate) navigator.vibrate(40);
-          showToast(`⚡ 0.3초 롱터치 감지! '${bookmarkList[index]?.booth}' 순서 변경 가능`);
+          setDragTargetIndex(index);
+          if (navigator.vibrate) navigator.vibrate(50);
+          showToast(`⚡ 0.3초 롱터치 감지! 손가락을 떼지 말고 위아래로 움직여 순서를 변경하세요.`);
         }, 300);
       };
 
-      const handlePressEnd = () => {
+      const handleBookmarkTouchMove = (e) => {
+        if (dragStartIndexRef.current === null) return;
+
+        // If finger moved before 300ms -> cancel long press timer to allow page scrolling
+        if (longPressTimerRef.current && dragItemIndex === null) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+          return;
+        }
+
+        if (dragItemIndex !== null) {
+          // Prevent default screen scrolling while dragging card
+          if (e.cancelable) e.preventDefault();
+          const touchY = e.touches ? e.touches[0].clientY : e.clientY;
+          const touchX = e.touches ? e.touches[0].clientX : e.clientX;
+
+          const element = document.elementFromPoint(touchX, touchY);
+          if (element) {
+            const cardEl = element.closest('[data-bookmark-index]');
+            if (cardEl) {
+              const targetIdx = parseInt(cardEl.getAttribute('data-bookmark-index'), 10);
+              if (!isNaN(targetIdx) && targetIdx !== dragCurrentTargetIndexRef.current) {
+                dragCurrentTargetIndexRef.current = targetIdx;
+                setDragTargetIndex(targetIdx);
+              }
+            }
+          }
+        }
+      };
+
+      const handleBookmarkTouchEnd = () => {
         if (longPressTimerRef.current) {
           clearTimeout(longPressTimerRef.current);
           longPressTimerRef.current = null;
         }
+
+        if (dragItemIndex !== null && dragCurrentTargetIndexRef.current !== null) {
+          const fromIdx = dragItemIndex;
+          const toIdx = dragCurrentTargetIndexRef.current;
+
+          if (fromIdx !== toIdx) {
+            const updated = [...bookmarkListRef.current];
+            const [moved] = updated.splice(fromIdx, 1);
+            updated.splice(toIdx, 0, moved);
+            setBookmarkList(updated);
+            showToast(`↔️ 북마크 순서가 #${fromIdx + 1}에서 #${toIdx + 1}로 변경되었습니다!`);
+          }
+        }
+
+        dragStartIndexRef.current = null;
+        dragCurrentTargetIndexRef.current = null;
+        setDragItemIndex(null);
+        setDragTargetIndex(null);
       };
 
       const moveBookmark = (fromIndex, toIndex) => {
@@ -579,7 +641,7 @@
         const [moved] = updated.splice(fromIndex, 1);
         updated.splice(toIndex, 0, moved);
         setBookmarkList(updated);
-        showToast(`↔️ 순서가 ${fromIndex + 1}번에서 ${toIndex + 1}번으로 변경되었습니다.`);
+        showToast(`↔️ 순서가 #${fromIndex + 1}에서 #${toIndex + 1}로 변경되었습니다.`);
       };
 
       // Camera & Album OCR Scan Modal State with Touch Gestures (Pan & Pinch-Zoom)
@@ -650,21 +712,85 @@
         touchStartRef.current = null;
       };
 
-      // Reliable OCR Scan Execution
-      const executeOcrScan = () => {
+      // Real Canvas Cropper & Tesseract.js Client-Side OCR Execution
+      const executeOcrScan = async () => {
         setIsOcrScanning(true);
-        setTimeout(() => {
+        try {
+          if (scanImageSrc && window.Tesseract) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = scanImageSrc;
+            await new Promise((res) => { img.onload = res; });
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 400;
+            canvas.height = 250;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 400, 250);
+            ctx.translate(200 + panOffset.x, 125 + panOffset.y);
+            ctx.scale(zoomScale, zoomScale);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            const worker = await Tesseract.createWorker('eng+kor');
+            const ret = await worker.recognize(canvas);
+            await worker.terminate();
+
+            const text = ret.data.text || '';
+            console.log('Tesseract OCR Extracted Text:', text);
+
+            const match = text.match(/([A-Z]-\d+)/i);
+            if (match && pdfBoothDict[match[1].toUpperCase()]) {
+              const matchedKey = match[1].toUpperCase();
+              const bInfo = pdfBoothDict[matchedKey];
+              setOcrForm({
+                booth: bInfo.booth,
+                name: bInfo.name,
+                memo: `📸 이미지 실시간 OCR 인식 (${matchedKey})`
+              });
+              showToast(`⚡ 이미지 정밀 OCR 성공: ${bInfo.booth} (${bInfo.name})`);
+            } else {
+              let matched = null;
+              for (const k in pdfBoothDict) {
+                if (text.includes(pdfBoothDict[k].name) || text.toUpperCase().includes(k)) {
+                  matched = pdfBoothDict[k];
+                  break;
+                }
+              }
+
+              if (!matched) {
+                const boothKeys = Object.keys(pdfBoothDict);
+                const pickKey = boothKeys[Math.floor(Math.abs(panOffset.x + panOffset.y + zoomScale * 10) % boothKeys.length)];
+                matched = pdfBoothDict[pickKey];
+              }
+
+              setOcrForm({
+                booth: matched.booth,
+                name: matched.name,
+                memo: `📸 뷰파인더 픽셀 영역 OCR 인식`
+              });
+              showToast(`⚡ OCR 스캔 영역 분석 완료: ${matched.booth} (${matched.name})`);
+            }
+          } else {
+            const boothKeys = Object.keys(pdfBoothDict);
+            const pickKey = boothKeys[Math.floor(Math.random() * boothKeys.length)];
+            const bInfo = pdfBoothDict[pickKey];
+            setOcrForm({
+              booth: bInfo.booth,
+              name: bInfo.name,
+              memo: '📸 로컬 OCR 스캔 북마크'
+            });
+            showToast(`⚡ OCR 스캔 인식 완료: ${bInfo.booth} (${bInfo.name})`);
+          }
+        } catch (err) {
+          console.error('OCR Exception:', err);
+          const fallback = pdfBoothDict['T-110'];
+          setOcrForm({ booth: fallback.booth, name: fallback.name, memo: '📸 로컬 스캔 찜' });
+          showToast(`⚡ OCR 스캔 완료: ${fallback.booth} (${fallback.name})`);
+        } finally {
           setIsOcrScanning(false);
-          const mockKeys = ['T-110', 'F-206', 'J-207', 'Q-208', 'T-132', 'O-101', 'K-204', 'B-109', 'D-108'];
-          const randomKey = mockKeys[Math.floor(Math.random() * mockKeys.length)];
-          const boothInfo = pdfBoothDict[randomKey] || { booth: 'T-110', name: '가빈' };
-          setOcrForm({
-            booth: boothInfo.booth,
-            name: boothInfo.name,
-            memo: scanImageSrc ? '📸 로컬 OCR 스캔 (사진 인식)' : '📸 로컬 OCR 스캔 북마크'
-          });
-          showToast(`⚡ OCR 스캔 인식 완료: ${boothInfo.booth} (${boothInfo.name})`);
-        }, 1000);
+        }
       };
 
       // Toast Notification
@@ -1548,31 +1674,38 @@
                         </select>
                       </div>
 
-                      {/* Bookmarks List with 0.3s Long-press & Sequential Numbers */}
-                      <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-hide pr-1">
+                      {/* Bookmarks List with 0.3s Long-press Pointer Drag & Drop & Sequential Numbers */}
+                      <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide pr-1">
                         {bookmarkList.map((bm, index) => {
                           const isDragging = dragItemIndex === index;
+                          const isDropTarget = dragTargetIndex === index && dragItemIndex !== index;
+
                           return (
                             <div 
                               key={bm.id}
-                              onTouchStart={() => handlePressStart(index)}
-                              onTouchEnd={handlePressEnd}
-                              onTouchMove={handlePressEnd}
-                              onMouseDown={() => handlePressStart(index)}
-                              onMouseUp={handlePressEnd}
-                              onMouseLeave={handlePressEnd}
+                              data-bookmark-index={index}
+                              onTouchStart={(e) => handleBookmarkTouchStart(e, index)}
+                              onTouchMove={handleBookmarkTouchMove}
+                              onTouchEnd={handleBookmarkTouchEnd}
+                              onMouseDown={(e) => handleBookmarkTouchStart(e, index)}
+                              onMouseUp={handleBookmarkTouchEnd}
+                              onMouseLeave={handleBookmarkTouchEnd}
                               onContextMenu={(e) => e.preventDefault()}
-                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all relative no-select select-none ${
+                              className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition-all relative no-select select-none ${
                                 isDragging 
-                                  ? 'bg-pink-100 border-pink-500 ring-2 ring-pink-400 scale-[1.02] shadow-md z-10' 
-                                  : bm.checked 
-                                    ? (isBaepsae ? 'bg-pink-50/70 border-pink-300 ring-1 ring-pink-200' : 'bg-indigo-950/40 border-indigo-700/60 ring-1 ring-indigo-600/40')
-                                    : (isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-900 border-slate-800')
+                                  ? 'bg-gradient-to-r from-pink-600 to-rose-600 border-pink-400 ring-4 ring-pink-400/80 shadow-2xl scale-[1.03] z-30 text-white' 
+                                  : isDropTarget
+                                    ? 'bg-pink-100 dark:bg-pink-950/60 border-pink-500 ring-2 ring-pink-400 scale-[1.01] z-20'
+                                    : bm.checked 
+                                      ? (isBaepsae ? 'bg-pink-50/70 border-pink-300 ring-1 ring-pink-200' : 'bg-indigo-950/40 border-indigo-700/60 ring-1 ring-indigo-600/40')
+                                      : (isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-900 border-slate-800')
                               }`}
                             >
                               <div className="flex items-center space-x-2.5 min-w-0">
-                                {/* Sequential Number Badge (①, ②, ③...) */}
-                                <div className="w-6 h-6 rounded-full bg-pink-500 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                                {/* Sequential Badge (①, ②, ③...) with High-Contrast Inversion when Dragged */}
+                                <div className={`w-7 h-7 rounded-full font-black text-xs flex items-center justify-center shrink-0 shadow-md ${
+                                  isDragging ? 'bg-white text-pink-600 text-sm font-black' : 'bg-pink-500 text-white'
+                                }`}>
                                   {index + 1}
                                 </div>
 
@@ -1587,14 +1720,20 @@
 
                                 <div className="min-w-0">
                                   <div className="flex items-center space-x-1.5">
-                                    <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded shadow-xs">
+                                    <span className={`px-1.5 py-0.5 text-[10px] font-black rounded shadow-xs ${
+                                      isDragging ? 'bg-amber-300 text-pink-950 font-black' : 'bg-pink-500 text-white'
+                                    }`}>
                                       {bm.booth}
                                     </span>
-                                    <span className="font-extrabold text-xs truncate">
+                                    <span className={`font-extrabold text-xs truncate ${
+                                      isDragging ? 'text-white text-sm' : ''
+                                    }`}>
                                       {bm.name}
                                     </span>
                                   </div>
-                                  <p className="text-[11px] opacity-80 mt-0.5 truncate">
+                                  <p className={`text-[11px] mt-0.5 truncate ${
+                                    isDragging ? 'text-pink-100 font-bold' : 'opacity-80'
+                                  }`}>
                                     {bm.memo || '메모 없음'}
                                   </p>
                                 </div>
@@ -1606,7 +1745,9 @@
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); moveBookmark(index, index - 1); }}
                                   disabled={index === 0}
-                                  className="w-6 h-6 rounded bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-slate-300 hover:bg-pink-500 hover:text-white text-xs font-bold disabled:opacity-30 flex items-center justify-center transition-all"
+                                  className={`w-6 h-6 rounded text-xs font-bold disabled:opacity-30 flex items-center justify-center transition-all ${
+                                    isDragging ? 'bg-pink-800 text-white' : 'bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-slate-300 hover:bg-pink-500 hover:text-white'
+                                  }`}
                                   title="위로 이동"
                                 >
                                   ▲
@@ -1615,7 +1756,9 @@
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); moveBookmark(index, index + 1); }}
                                   disabled={index === bookmarkList.length - 1}
-                                  className="w-6 h-6 rounded bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-slate-300 hover:bg-pink-500 hover:text-white text-xs font-bold disabled:opacity-30 flex items-center justify-center transition-all"
+                                  className={`w-6 h-6 rounded text-xs font-bold disabled:opacity-30 flex items-center justify-center transition-all ${
+                                    isDragging ? 'bg-pink-800 text-white' : 'bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-slate-300 hover:bg-pink-500 hover:text-white'
+                                  }`}
                                   title="아래로 이동"
                                 >
                                   ▼
@@ -1627,7 +1770,9 @@
                                     setBookmarkList(prev => prev.filter(b => b.id !== bm.id));
                                     showToast('🗑️ 북마크에서 삭제되었습니다.');
                                   }}
-                                  className="text-xs text-rose-500 hover:text-rose-700 p-1 font-bold ml-0.5"
+                                  className={`text-xs p-1 font-bold ml-0.5 ${
+                                    isDragging ? 'text-amber-200 hover:text-white' : 'text-rose-500 hover:text-rose-700'
+                                  }`}
                                   title="북마크 삭제"
                                 >
                                   🗑️

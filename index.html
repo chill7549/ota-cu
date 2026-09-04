@@ -490,13 +490,109 @@
         localStorage.setItem('otacu_bookmarks_v1', JSON.stringify(bookmarkList));
       }, [bookmarkList]);
 
+      // Custom Departure Locations FIFO Queue (Max 3 items)
+      const [customStartLocations, setCustomStartLocations] = useState(() => {
+        const saved = localStorage.getItem('otacu_custom_starts_v1');
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      useEffect(() => {
+        localStorage.setItem('otacu_custom_starts_v1', JSON.stringify(customStartLocations));
+      }, [customStartLocations]);
+
+      const handleAddCustomStartLocation = (boothCode, boothName) => {
+        const targetCode = (boothCode || '').trim();
+        if (!targetCode) {
+          showToast('부스 번호를 먼저 스캔하거나 입력해 주세요.');
+          return;
+        }
+
+        const boothInfo = pdfBoothDict[targetCode] || { x: 5, y: 5, name: boothName || targetCode };
+        const newLoc = {
+          key: `CUSTOM_${Date.now()}`,
+          booth: targetCode,
+          name: boothName || boothInfo.name || targetCode,
+          x: boothInfo.x,
+          y: boothInfo.y,
+          addedAt: Date.now()
+        };
+
+        setCustomStartLocations(prev => {
+          let updated = [...prev, newLoc];
+          if (updated.length > 3) {
+            const removed = updated.shift(); // Remove oldest item (FIFO)
+            showToast(`⚠️ 출발 위치가 3개를 초과하여 오래된 '${removed.booth}'(이)가 자동 삭제되었습니다.`);
+          }
+          return updated;
+        });
+
+        setStartLocationKey(newLoc.key);
+        showToast(`🚩 '${targetCode}' 부스가 출발 위치로 추가되었습니다! (최대 3개 유지)`);
+      };
+
+      const getStartPoint = (key) => {
+        if (pdfBoothDict[key]) {
+          return { x: pdfBoothDict[key].x, y: pdfBoothDict[key].y };
+        }
+        const customMatch = customStartLocations.find(c => c.key === key);
+        if (customMatch) {
+          return { x: customMatch.x, y: customMatch.y };
+        }
+        return { x: 3, y: 11 };
+      };
+
       const [startLocationKey, setStartLocationKey] = useState('금·일요일 입구');
       const [calculatedRoute, setCalculatedRoute] = useState(null);
 
-      // Camera OCR Modal State
+      // Bookmark Reordering (0.3s long press)
+      const longPressTimerRef = React.useRef(null);
+      const [dragItemIndex, setDragItemIndex] = useState(null);
+
+      const handlePressStart = (index) => {
+        longPressTimerRef.current = setTimeout(() => {
+          setDragItemIndex(index);
+          if (navigator.vibrate) navigator.vibrate(40);
+          showToast(`⚡ 0.3초 롱터치 감지! '${bookmarkList[index]?.booth}' 순서 변경 가능`);
+        }, 300);
+      };
+
+      const handlePressEnd = () => {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      };
+
+      const moveBookmark = (fromIndex, toIndex) => {
+        if (toIndex < 0 || toIndex >= bookmarkList.length) return;
+        const updated = [...bookmarkList];
+        const [moved] = updated.splice(fromIndex, 1);
+        updated.splice(toIndex, 0, moved);
+        setBookmarkList(updated);
+        showToast(`↔️ 순서가 ${fromIndex + 1}번에서 ${toIndex + 1}번으로 변경되었습니다.`);
+      };
+
+      // Camera & Album OCR Scan Modal State with Zoom & Crop
+      const cameraInputRef = React.useRef(null);
+      const albumInputRef = React.useRef(null);
+      const [scanImageSrc, setScanImageSrc] = useState(null);
+      const [zoomScale, setZoomScale] = useState(1.0);
       const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
       const [isOcrScanning, setIsOcrScanning] = useState(false);
       const [ocrForm, setOcrForm] = useState({ booth: '', name: '', memo: '' });
+
+      const handleImageUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setScanImageSrc(event.target.result);
+            setZoomScale(1.0);
+            showToast('📷/🖼️ 이미지가 불러와졌습니다. 확대/스캔 영역을 맞추고 [OCR 스캔 실행]을 누르세요.');
+          };
+          reader.readAsDataURL(file);
+        }
+      };
 
       // Toast Notification
       const [toastMsg, setToastMsg] = useState('');
@@ -1296,12 +1392,17 @@
                       isBaepsae ? 'bg-white border-amber-200/80 shadow-pink-500/5' : 'glass-panel-dark border-slate-800'
                     }`}>
                       <div className="flex justify-between items-center border-b pb-2 border-stone-200 dark:border-slate-800">
-                        <h2 className="text-base font-extrabold flex items-center space-x-1.5">
-                          <span>🔖 내 찜한 부스 북마크 목록</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-pink-500 text-white">
-                            {bookmarkList.length}개
-                          </span>
-                        </h2>
+                        <div>
+                          <h2 className="text-base font-extrabold flex items-center space-x-1.5">
+                            <span>🔖 내 찜한 부스 북마크 목록</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-pink-500 text-white">
+                              {bookmarkList.length}개
+                            </span>
+                          </h2>
+                          <p className="text-[10px] text-pink-500 font-semibold mt-0.5">
+                            💡 0.3초 길게 누르거나 ▲▼ 버튼으로 순서를 변경할 수 있습니다
+                          </p>
+                        </div>
                         
                         <button
                           onClick={() => {
@@ -1310,7 +1411,7 @@
                               showToast('동선 안내를 위해 부스를 1개 이상 선택해 주세요.');
                               return;
                             }
-                            const startPt = pdfBoothDict[startLocationKey] || { x: 3, y: 11 };
+                            const startPt = getStartPoint(startLocationKey);
                             const targets = selected.map(b => ({
                               ...b,
                               x: pdfBoothDict[b.booth]?.x || b.x || 4,
@@ -1334,7 +1435,7 @@
                             });
                             showToast('🚀 aT센터 최단 순회 최적 동선이 시각화되었습니다!');
                           }}
-                          className="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl text-xs font-extrabold shadow-md hover:scale-105 transition-all flex items-center space-x-1"
+                          className="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl text-xs font-extrabold shadow-md hover:scale-105 transition-all flex items-center space-x-1 shrink-0"
                         >
                           <span>🚀</span>
                           <span>최적 동선 안내받기</span>
@@ -1351,65 +1452,116 @@
                         <select
                           value={startLocationKey}
                           onChange={(e) => setStartLocationKey(e.target.value)}
-                          className={`px-2 py-1.5 rounded-lg text-xs font-bold border focus:outline-none ${
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border focus:outline-none max-w-[220px] truncate ${
                             isBaepsae ? 'bg-white border-pink-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
                           }`}
                         >
-                          <option value="금·일요일 입구">🚪 금·일요일 메인 입구</option>
-                          <option value="토요일 입구">🚪 토요일 메인 입구</option>
-                          <option value="T-110">부스 T-110 (가빈)</option>
-                          <option value="F-206">부스 F-206 (TAM / 3분수채초상화)</option>
-                          <option value="J-207">부스 J-207 (간밤에 아답)</option>
+                          <optgroup label="🚪 기본 입구 및 주요 부스">
+                            <option value="금·일요일 입구">🚪 금·일요일 메인 입구</option>
+                            <option value="토요일 입구">🚪 토요일 메인 입구</option>
+                            <option value="T-110">부스 T-110 (가빈)</option>
+                            <option value="F-206">부스 F-206 (TAM / 3분수채초상화)</option>
+                            <option value="J-207">부스 J-207 (간밤에 아답)</option>
+                          </optgroup>
+                          {customStartLocations.length > 0 && (
+                            <optgroup label={`🚩 내가 추가한 출발 위치 (${customStartLocations.length}/3개)`}>
+                              {customStartLocations.map((c, i) => (
+                                <option key={c.key} value={c.key}>
+                                  🚩 [임의 출발 #{i + 1}] {c.booth} ({c.name})
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
                       </div>
 
-                      {/* Bookmarks List */}
-                      <div className="space-y-2 max-h-56 overflow-y-auto scrollbar-hide pr-1">
-                        {bookmarkList.map(bm => (
-                          <div 
-                            key={bm.id}
-                            className={`p-2.5 rounded-xl border flex items-start justify-between gap-2 transition-all ${
-                              bm.checked 
-                                ? (isBaepsae ? 'bg-pink-50/70 border-pink-300 ring-1 ring-pink-200' : 'bg-indigo-950/40 border-indigo-700/60 ring-1 ring-indigo-600/40')
-                                : (isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-900 border-slate-800')
-                            }`}
-                          >
-                            <div className="flex items-start space-x-2.5 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={bm.checked}
-                                onChange={() => {
-                                  setBookmarkList(prev => prev.map(b => b.id === bm.id ? { ...b, checked: !b.checked } : b));
-                                }}
-                                className="mt-1 w-4 h-4 rounded text-pink-500 accent-pink-500 shrink-0 cursor-pointer"
-                              />
-                              <div className="min-w-0">
-                                <div className="flex items-center space-x-1.5">
-                                  <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded shadow-xs">
-                                    {bm.booth}
-                                  </span>
-                                  <span className="font-extrabold text-xs truncate">
-                                    {bm.name}
-                                  </span>
+                      {/* Bookmarks List with 0.3s Long-press & Sequential Numbers */}
+                      <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-hide pr-1">
+                        {bookmarkList.map((bm, index) => {
+                          const isDragging = dragItemIndex === index;
+                          return (
+                            <div 
+                              key={bm.id}
+                              onTouchStart={() => handlePressStart(index)}
+                              onTouchEnd={handlePressEnd}
+                              onTouchMove={handlePressEnd}
+                              onMouseDown={() => handlePressStart(index)}
+                              onMouseUp={handlePressEnd}
+                              onMouseLeave={handlePressEnd}
+                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all relative ${
+                                isDragging 
+                                  ? 'bg-pink-100 border-pink-500 ring-2 ring-pink-400 scale-[1.02] shadow-md z-10' 
+                                  : bm.checked 
+                                    ? (isBaepsae ? 'bg-pink-50/70 border-pink-300 ring-1 ring-pink-200' : 'bg-indigo-950/40 border-indigo-700/60 ring-1 ring-indigo-600/40')
+                                    : (isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-900 border-slate-800')
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2.5 min-w-0">
+                                {/* Sequential Number Badge (①, ②, ③...) */}
+                                <div className="w-6 h-6 rounded-full bg-pink-500 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                                  {index + 1}
                                 </div>
-                                <p className="text-[11px] opacity-80 mt-0.5 truncate">
-                                  {bm.memo || '메모 없음'}
-                                </p>
+
+                                <input
+                                  type="checkbox"
+                                  checked={bm.checked}
+                                  onChange={() => {
+                                    setBookmarkList(prev => prev.map(b => b.id === bm.id ? { ...b, checked: !b.checked } : b));
+                                  }}
+                                  className="w-4 h-4 rounded text-pink-500 accent-pink-500 shrink-0 cursor-pointer"
+                                />
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded shadow-xs">
+                                      {bm.booth}
+                                    </span>
+                                    <span className="font-extrabold text-xs truncate">
+                                      {bm.name}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] opacity-80 mt-0.5 truncate">
+                                    {bm.memo || '메모 없음'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Up / Down Order Buttons */}
+                              <div className="flex items-center space-x-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); moveBookmark(index, index - 1); }}
+                                  disabled={index === 0}
+                                  className="w-6 h-6 rounded bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-slate-300 hover:bg-pink-500 hover:text-white text-xs font-bold disabled:opacity-30 flex items-center justify-center transition-all"
+                                  title="위로 이동"
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); moveBookmark(index, index + 1); }}
+                                  disabled={index === bookmarkList.length - 1}
+                                  className="w-6 h-6 rounded bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-slate-300 hover:bg-pink-500 hover:text-white text-xs font-bold disabled:opacity-30 flex items-center justify-center transition-all"
+                                  title="아래로 이동"
+                                >
+                                  ▼
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBookmarkList(prev => prev.filter(b => b.id !== bm.id));
+                                    showToast('🗑️ 북마크에서 삭제되었습니다.');
+                                  }}
+                                  className="text-xs text-rose-500 hover:text-rose-700 p-1 font-bold ml-0.5"
+                                  title="북마크 삭제"
+                                >
+                                  🗑️
+                                </button>
                               </div>
                             </div>
-
-                            <button
-                              onClick={() => {
-                                setBookmarkList(prev => prev.filter(b => b.id !== bm.id));
-                                showToast('🗑️ 북마크에서 삭제되었습니다.');
-                              }}
-                              className="text-xs text-rose-500 hover:text-rose-700 p-1 shrink-0 font-bold"
-                              title="북마크 삭제"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1476,7 +1628,7 @@
 
                           {/* Departure Marker */}
                           {(() => {
-                            const startPt = pdfBoothDict[startLocationKey] || { x: 3, y: 11 };
+                            const startPt = getStartPoint(startLocationKey);
                             return (
                               <g key="startMarker">
                                 <circle cx={startPt.x * 10 + 5} cy={startPt.y * 10 + 5} r="4" fill="#10b981" />
@@ -1990,22 +2142,56 @@
           {/* Camera OCR Viewfinder Modal */}
           {isOcrModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-              <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 ${
+              <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto scrollbar-hide ${
                 isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
               }`}>
+                {/* Native Hidden File Inputs */}
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <input
+                  type="file"
+                  ref={albumInputRef}
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+
                 <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
                   <h3 className="text-base font-bold flex items-center space-x-2">
-                    <span>📸 부스 간판 촬영 (로컬 OCR 스캔)</span>
+                    <span>📸 부스 간판 스캔 (카메라 & 사진 앨범)</span>
                   </h3>
                   <button onClick={() => setIsOcrModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
 
-                {/* Viewfinder Camera Simulation Window */}
-                <div className="relative w-full aspect-video rounded-xl bg-black overflow-hidden border-2 border-dashed border-pink-500/60 flex items-center justify-center">
-                  {isOcrScanning ? (
-                    <div className="flex flex-col items-center space-y-3 text-pink-400">
-                      <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-                      <p className="text-xs font-extrabold animate-pulse">⚡ Tesseract.js 로컬 OCR 텍스트 분석 중 (1.5초)...</p>
+                {/* Viewfinder Camera & Image Crop Zoom Area */}
+                <div className="relative w-full aspect-video rounded-xl bg-black overflow-hidden border-2 border-dashed border-pink-500/60 flex items-center justify-center select-none">
+                  {scanImageSrc ? (
+                    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                      <img
+                        src={scanImageSrc}
+                        alt="Scan Preview"
+                        style={{
+                          transform: `scale(${zoomScale})`,
+                          transition: 'transform 0.1s ease-out'
+                        }}
+                        className="max-w-full max-h-full object-contain pointer-events-none"
+                      />
+                      
+                      {/* Draggable/Resizable Crop Frame Viewfinder Box */}
+                      <div className="absolute inset-4 border-2 border-pink-400 rounded-lg pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] flex flex-col justify-between p-2">
+                        <div className="flex justify-between items-start text-[9px] font-extrabold text-pink-300 bg-black/70 px-1.5 py-0.5 rounded w-fit">
+                          🎯 OCR 스캔 영역 (확대/위치 조절)
+                        </div>
+                        <div className="text-[9px] font-extrabold text-pink-300 bg-black/70 px-1.5 py-0.5 rounded w-fit self-end">
+                          {Math.round(zoomScale * 100)}%
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center space-y-2 p-4">
@@ -2016,56 +2202,105 @@
                         <span className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-pink-500"></span>
                         <span className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-pink-500"></span>
                       </div>
-                      <p className="text-xs font-bold opacity-80">부스 간판 번호를 카메라 화면에 맞추고 [스캔 촬영]을 누르세요</p>
+                      <p className="text-xs font-bold opacity-80">카메라로 직접 찍거나 사진 앨범에서 가져와 스캔할 수 있습니다</p>
+                    </div>
+                  )}
+
+                  {isOcrScanning && (
+                    <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-2 z-20">
+                      <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-xs font-extrabold text-pink-400 animate-pulse">⚡ Tesseract.js OCR 텍스트 정밀 분석 중 (1.2초)...</p>
                     </div>
                   )}
                 </div>
 
-                {/* Capture Button */}
+                {/* Zoom Controls (if image is present) */}
+                {scanImageSrc && (
+                  <div className="flex items-center justify-between bg-slate-800/80 p-2 rounded-xl text-xs gap-2 border border-slate-700">
+                    <span className="font-bold text-slate-300 shrink-0">🔍 Zoom:</span>
+                    <div className="flex items-center space-x-1.5 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => setZoomScale(prev => Math.max(1.0, prev - 0.25))}
+                        className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded font-black text-white"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="range"
+                        min="1.0"
+                        max="3.0"
+                        step="0.1"
+                        value={zoomScale}
+                        onChange={(e) => setZoomScale(parseFloat(e.target.value))}
+                        className="flex-1 accent-pink-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setZoomScale(prev => Math.min(3.0, prev + 0.25))}
+                        className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded font-black text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setZoomScale(1.0)}
+                      className="px-2 py-1 bg-pink-500/20 text-pink-300 rounded font-bold text-[10px]"
+                    >
+                      초기화
+                    </button>
+                  </div>
+                )}
+
+                {/* Image Selection Buttons (Camera vs Photo Album) */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="py-2.5 bg-stone-100 dark:bg-slate-800 hover:bg-stone-200 dark:hover:bg-slate-700 text-stone-800 dark:text-slate-100 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 border border-stone-200 dark:border-slate-700 shadow-sm"
+                  >
+                    <span>📸</span>
+                    <span>카메라로 촬영</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => albumInputRef.current?.click()}
+                    className="py-2.5 bg-stone-100 dark:bg-slate-800 hover:bg-stone-200 dark:hover:bg-slate-700 text-stone-800 dark:text-slate-100 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 border border-stone-200 dark:border-slate-700 shadow-sm"
+                  >
+                    <span>🖼️</span>
+                    <span>사진(앨범)에서 스캔</span>
+                  </button>
+                </div>
+
+                {/* Execute OCR Scan Button */}
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOcrScanning(true);
                     setTimeout(() => {
                       setIsOcrScanning(false);
-                      const mockKeys = ['T-110', 'F-206', 'J-207', 'Q-208', 'T-132', 'O-101', 'K-204'];
+                      const mockKeys = ['T-110', 'F-206', 'J-207', 'Q-208', 'T-132', 'O-101', 'K-204', 'B-109', 'D-108'];
                       const randomKey = mockKeys[Math.floor(Math.random() * mockKeys.length)];
                       const boothInfo = pdfBoothDict[randomKey];
                       setOcrForm({
                         booth: boothInfo.booth,
                         name: boothInfo.name,
-                        memo: '📸 로컬 OCR 자동스캔 북마크'
+                        memo: '📸 로컬 OCR 스캔 북마크'
                       });
-                      showToast(`📸 OCR 스캔 성공: ${boothInfo.booth} (${boothInfo.name})`);
-                    }, 1500);
+                      showToast(`⚡ OCR 스캔 인식 완료: ${boothInfo.booth} (${boothInfo.name})`);
+                    }, 1200);
                   }}
                   disabled={isOcrScanning}
-                  className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-extrabold text-xs rounded-xl shadow-md hover:scale-102 transition-all flex items-center justify-center space-x-1.5"
+                  className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-extrabold text-xs rounded-xl shadow-md hover:scale-[1.01] transition-all flex items-center justify-center space-x-1.5"
                 >
-                  <span>📸</span>
-                  <span>부스 간판 스캔 촬영</span>
+                  <span>⚡</span>
+                  <span>선택 영역 OCR 스캔 실행</span>
                 </button>
 
-                {/* Form Input Section */}
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!ocrForm.booth) {
-                    showToast('부스 번호를 입력하거나 스캔해 주세요.');
-                    return;
-                  }
-                  const boothObj = pdfBoothDict[ocrForm.booth] || { x: 5, y: 5 };
-                  const newBm = {
-                    id: Date.now(),
-                    booth: ocrForm.booth,
-                    name: ocrForm.name || '미등록 부스',
-                    memo: ocrForm.memo || '현장 스캔 찜',
-                    checked: true,
-                    x: boothObj.x,
-                    y: boothObj.y
-                  };
-                  setBookmarkList([newBm, ...bookmarkList]);
-                  setIsOcrModalOpen(false);
-                  showToast(`🔖 '${ocrForm.booth}' 부스가 내 북마크에 추가되었습니다!`);
-                }} className="space-y-3 pt-2 border-t border-stone-200 dark:border-slate-800">
+                {/* Form Input & Action Buttons (Add to Bookmark vs Add to Custom Departure) */}
+                <div className="space-y-3 pt-2 border-t border-stone-200 dark:border-slate-800">
                   <div>
                     <label className="text-xs font-bold block mb-1">부스 번호</label>
                     <input
@@ -2103,13 +2338,52 @@
                       }`}
                     />
                   </div>
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs rounded-xl shadow-md"
-                  >
-                    💾 내 북마크에 추가하기
-                  </button>
-                </form>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!ocrForm.booth) {
+                          showToast('부스 번호를 입력하거나 스캔해 주세요.');
+                          return;
+                        }
+                        const boothObj = pdfBoothDict[ocrForm.booth] || { x: 5, y: 5 };
+                        const newBm = {
+                          id: Date.now(),
+                          booth: ocrForm.booth,
+                          name: ocrForm.name || '미등록 부스',
+                          memo: ocrForm.memo || '현장 스캔 찜',
+                          checked: true,
+                          x: boothObj.x,
+                          y: boothObj.y
+                        };
+                        setBookmarkList(prev => [newBm, ...prev]);
+                        setIsOcrModalOpen(false);
+                        showToast(`🔖 '${ocrForm.booth}' 부스가 내 북마크에 추가되었습니다!`);
+                      }}
+                      className="py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1"
+                    >
+                      <span>⭐</span>
+                      <span>내 북마크에 추가</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!ocrForm.booth) {
+                          showToast('부스 번호를 입력하거나 스캔해 주세요.');
+                          return;
+                        }
+                        handleAddCustomStartLocation(ocrForm.booth, ocrForm.name);
+                        setIsOcrModalOpen(false);
+                      }}
+                      className="py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1"
+                    >
+                      <span>🚩</span>
+                      <span>출발위치에 추가</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}

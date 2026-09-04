@@ -1,5 +1,5 @@
-// Ota-Cu Service Worker for PWA App Support - v6 (JSX Syntax Fix & feature_navi Update)
-const CACHE_NAME = 'otacu-cache-v6';
+// Ota-Cu Service Worker for PWA App Support - v7 (Camera/Album OCR, FIFO Start Locations & 0.3s Reorder)
+const CACHE_NAME = 'otacu-cache-v7';
 const urlsToCache = [
   './',
   './index.html',

@@ -262,6 +262,49 @@
       return { text: `${Math.floor(diffHour / 24)}일 전`, isRecent: false };
     }
 
+    // Helper: Normalize booth codes to standard "A-000" format (e.g. f110 -> F-110, f 110 -> F-110)
+    function normalizeBoothCode(str) {
+      if (!str) return '';
+      const trimmed = str.trim().toUpperCase();
+      const m = trimmed.match(/^([A-Z]{1,2})[\s\-]*(\d{1,4})$/);
+      if (m) {
+        return `${m[1]}-${m[2]}`;
+      }
+      return trimmed;
+    }
+
+    // Helper: Flexible Booth Dictionary Search (by Booth Code, Booth Name, or Author)
+    function searchBoothDict(query) {
+      if (!query) return null;
+      const trimmed = query.trim();
+      const normCode = normalizeBoothCode(trimmed);
+
+      // 1. Direct key match (e.g. F-110)
+      if (pdfBoothDict[normCode]) {
+        return pdfBoothDict[normCode];
+      }
+
+      const queryUpper = trimmed.toUpperCase();
+      const queryClean = queryUpper.replace(/[\s\-]/g, '');
+
+      // 2. Iterate through pdfBoothDict to match normalized booth code, booth name, or author name
+      for (const k in pdfBoothDict) {
+        const item = pdfBoothDict[k];
+        const itemBoothClean = item.booth.replace(/[\s\-]/g, '').toUpperCase();
+        
+        // Match booth code without hyphen/spaces (e.g. F110 == F110)
+        if (itemBoothClean === queryClean || item.booth.toUpperCase() === queryUpper) {
+          return item;
+        }
+
+        // Match booth name or author name
+        if (item.name && (item.name.toLowerCase().includes(trimmed.toLowerCase()) || trimmed.toLowerCase().includes(item.name.toLowerCase()))) {
+          return item;
+        }
+      }
+      return null;
+    }
+
     // --- 2026 SEOUL ILLUSTRATION KOREA aT Center PDF Booth Dictionary & Grid Map Data ---
     const pdfBoothDict = {
       'F-110': { booth: 'F-110', name: '영이', x: 5, y: 3 },
@@ -663,6 +706,36 @@
       const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
       const [isOcrScanning, setIsOcrScanning] = useState(false);
       const [ocrForm, setOcrForm] = useState({ booth: '', name: '', memo: '' });
+      const [ocrSearchInput, setOcrSearchInput] = useState('');
+
+      const handleBoothSearch = () => {
+        const query = ocrSearchInput.trim();
+        if (!query) {
+          showToast('검색할 부스번호, 부스명, 또는 작가명을 입력해 주세요.');
+          return;
+        }
+        const matched = searchBoothDict(query);
+        if (matched) {
+          setOcrForm({
+            booth: matched.booth,
+            name: matched.name,
+            memo: `🔍 텍스트 검색 결과 (${matched.booth})`
+          });
+          showToast(`⚡ 부스 검색 성공: ${matched.booth} (${matched.name})`);
+        } else {
+          const norm = normalizeBoothCode(query);
+          if (/^[A-Z]{1,2}-\d{1,4}$/.test(norm)) {
+            setOcrForm({
+              booth: norm,
+              name: '미등록 부스',
+              memo: `🔍 텍스트 입력 부스 (${norm})`
+            });
+            showToast(`🔍 '${norm}' 부스 정보를 양식에 설정했습니다.`);
+          } else {
+            showToast(`⚠️ '${query}'에 해당하는 부스 정보를 찾을 수 없습니다.`);
+          }
+        }
+      };
 
       const handleImageUpload = (e) => {
         const file = e.target.files?.[0];
@@ -763,25 +836,15 @@
             const text = (ret.data.text || '').replace(/\s+/g, ' ');
             console.log('Tesseract Binarized OCR Text Output:', text);
 
-            // Match Booth Code Pattern [A-Z]-\d+ (e.g. F-110, T-110, F-206)
-            const match = text.match(/([A-Z]-\d+)/i);
+            // Match Booth Code Pattern (e.g. F-110, F110, f 110, T-110, F-206)
+            const match = text.match(/([A-Z]{1,2}[\s\-]*\d{1,4})/i);
             let matchedObj = null;
 
             if (match) {
-              const code = match[1].toUpperCase();
-              if (pdfBoothDict[code]) {
-                matchedObj = pdfBoothDict[code];
-              } else {
-                matchedObj = { booth: code, name: '현장 스캔 부스' };
-              }
+              const code = normalizeBoothCode(match[1]);
+              matchedObj = searchBoothDict(code) || { booth: code, name: '현장 스캔 부스' };
             } else {
-              // Check if any booth name from pdfBoothDict is recognized in text (e.g. 영이 -> F-110)
-              for (const k in pdfBoothDict) {
-                if (text.includes(pdfBoothDict[k].name) || text.toUpperCase().includes(k)) {
-                  matchedObj = pdfBoothDict[k];
-                  break;
-                }
-              }
+              matchedObj = searchBoothDict(text);
             }
 
             if (matchedObj) {
@@ -2528,6 +2591,39 @@
                   <span>⚡</span>
                   <span>선택 영역 OCR 스캔 실행</span>
                 </button>
+
+                {/* Direct Text Search Input Box & [🔍 부스 검색] Button */}
+                <div className="space-y-2 pt-2 border-t border-stone-200 dark:border-slate-800">
+                  <div className="flex items-center space-x-1.5 text-xs font-bold text-pink-600 dark:text-pink-400">
+                    <span>🔎</span>
+                    <span>부스 텍스트 직접 검색 (번호/부스명/작가명)</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={ocrSearchInput}
+                      onChange={(e) => setOcrSearchInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleBoothSearch();
+                        }
+                      }}
+                      placeholder="부스번호(예: F-110, f110, f 110), 부스명, 작가명..."
+                      className={`flex-1 border rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBoothSearch}
+                    className="w-full py-2.5 bg-stone-800 hover:bg-stone-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5"
+                  >
+                    <span>🔍</span>
+                    <span>부스 검색</span>
+                  </button>
+                </div>
 
                 {/* Form Input & Action Buttons (Add to Bookmark vs Add to Custom Departure) */}
                 <div className="space-y-3 pt-2 border-t border-stone-200 dark:border-slate-800">

@@ -1,5 +1,5 @@
-// Ota-Cu Service Worker for PWA App Support - v10 (Strict OCR Failure Notification & Single Floating Card Touch Drag)
-const CACHE_NAME = 'otacu-cache-v10';
+// Ota-Cu Service Worker for PWA App Support - v11 (OCR Modal Booth Search & Booth Code Normalization)
+const CACHE_NAME = 'otacu-cache-v11';
 const urlsToCache = [
   './',
   './index.html',

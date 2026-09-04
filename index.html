@@ -279,20 +279,20 @@
       const trimmed = query.trim();
       const normCode = normalizeBoothCode(trimmed);
 
-      // 1. Direct key match (e.g. F-110)
-      if (pdfBoothDict[normCode]) {
-        return pdfBoothDict[normCode];
+      // 1. Direct key match (e.g. F-110, D-106)
+      if (pdfSilko26[normCode]) {
+        return pdfSilko26[normCode];
       }
 
       const queryUpper = trimmed.toUpperCase();
       const queryClean = queryUpper.replace(/[\s\-]/g, '');
 
-      // 2. Iterate through pdfBoothDict to match normalized booth code, booth name, or author name
-      for (const k in pdfBoothDict) {
-        const item = pdfBoothDict[k];
+      // 2. Iterate through pdfSilko26 to match normalized booth code, booth name, or author name
+      for (const k in pdfSilko26) {
+        const item = pdfSilko26[k];
         const itemBoothClean = item.booth.replace(/[\s\-]/g, '').toUpperCase();
         
-        // Match booth code without hyphen/spaces (e.g. F110 == F110)
+        // Match booth code without hyphen/spaces (e.g. F110 == F110, D106 == D106)
         if (itemBoothClean === queryClean || item.booth.toUpperCase() === queryUpper) {
           return item;
         }
@@ -305,25 +305,384 @@
       return null;
     }
 
-    // --- 2026 SEOUL ILLUSTRATION KOREA aT Center PDF Booth Dictionary & Grid Map Data ---
-    const pdfBoothDict = {
-      'F-110': { booth: 'F-110', name: '영이', x: 5, y: 3 },
-      'T-110': { booth: 'T-110', name: '가빈', x: 2, y: 1 },
-      'J-207': { booth: 'J-207', name: '간밤에 아답', x: 4, y: 3 },
-      'F-206': { booth: 'F-206', name: 'TAM 모든 순간을 칠하다.', x: 6, y: 3 },
+    // --- 2026 SEOUL ILLUSTRATION KOREA aT Center Complete PDF Booth Dictionary (pdfSilko26) ---
+    const pdfSilko26 = {
+      // A 구역
+      'A-101': { booth: 'A-101', name: '커스텀빌리지', x: 1, y: 1 },
+      'A-103': { booth: 'A-103', name: '에일리언 스톰', x: 1, y: 3 },
+      'A-104': { booth: 'A-104', name: 'A-104 아티스트 부스', x: 1, y: 4 },
+      'A-106': { booth: 'A-106', name: '메미케이', x: 1, y: 5 },
+      'A-107': { booth: 'A-107', name: '코코의 그림공간', x: 1, y: 6 },
+      'A-108': { booth: 'A-108', name: '고양이방앗간, 사라라 / 위어돌스', x: 1, y: 7 },
+      'A-109': { booth: 'A-109', name: '대한무역투자진흥공사(KOTRA)', x: 1, y: 8 },
+
+      // B 구역
+      'B-101': { booth: 'B-101', name: '플러피치', x: 2, y: 1 },
+      'B-102': { booth: 'B-102', name: '무스(크렘봉봉)', x: 2, y: 1 },
+      'B-103': { booth: 'B-103', name: '김종이', x: 2, y: 2 },
+      'B-104': { booth: 'B-104', name: '보들부들 / 이응씨', x: 2, y: 2 },
+      'B-105': { booth: 'B-105', name: '찹콩툰', x: 2, y: 3 },
+      'B-106': { booth: 'B-106', name: '딸비', x: 2, y: 3 },
+      'B-107': { booth: 'B-107', name: '몽진아트', x: 2, y: 4 },
+      'B-108': { booth: 'B-108', name: 'B-108 부스', x: 2, y: 4 },
       'B-109': { booth: 'B-109', name: '128', x: 8, y: 5 },
-      'T-132': { booth: 'T-132', name: '걸쯔girlzz', x: 5, y: 1 },
-      'O-101': { booth: 'O-101', name: '고산타', x: 10, y: 7 },
-      'K-204': { booth: 'K-204', name: '그린 판타지아', x: 4, y: 5 },
-      'Q-201': { booth: 'Q-201', name: '꿈꾸는가을', x: 8, y: 7 },
-      'Q-206': { booth: 'Q-206', name: '도깨비 화방', x: 8, y: 9 },
-      'M-101': { booth: 'M-101', name: '먕이', x: 2, y: 7 },
-      'L-203': { booth: 'L-203', name: '모구샵', x: 4, y: 7 },
+      'B-110': { booth: 'B-110', name: '고츠 앤 하츠', x: 2, y: 5 },
+      'B-201': { booth: 'B-201', name: '제이피오', x: 2, y: 1 },
+      'B-202': { booth: 'B-202', name: '담장아래 / 사는 개 먼지,', x: 2, y: 1 },
       'B-203': { booth: 'B-203', name: '무우', x: 8, y: 3 },
-      'R-206': { booth: 'R-206', name: '수수', x: 10, y: 9 },
-      'T-146': { booth: 'T-146', name: '한여름과한겨울', x: 9, y: 1 },
+      'B-204': { booth: 'B-204', name: '나다스토리', x: 2, y: 2 },
+      'B-205': { booth: 'B-205', name: '꽃무리다솜', x: 2, y: 3 },
+      'B-206': { booth: 'B-206', name: '람니버스', x: 2, y: 3 },
+      'B-207': { booth: 'B-207', name: '바다범', x: 2, y: 4 },
+      'B-208': { booth: 'B-208', name: 'B-208 부스', x: 2, y: 4 },
+      'B-209': { booth: 'B-209', name: '엔젤시드 / 하루가흘러', x: 2, y: 5 },
+      'B-210': { booth: 'B-210', name: '새날그림', x: 2, y: 5 },
+
+      // C 구역
+      'C-101': { booth: 'C-101', name: 'C-101 부스', x: 3, y: 1 },
+      'C-102': { booth: 'C-102', name: '왓쏭', x: 3, y: 1 },
+      'C-103': { booth: 'C-103', name: '별긍상점', x: 3, y: 2 },
+      'C-104': { booth: 'C-104', name: '심냥즈', x: 3, y: 2 },
+      'C-105': { booth: 'C-105', name: '스튜디오 묘니', x: 3, y: 3 },
+      'C-106': { booth: 'C-106', name: '빙', x: 3, y: 3 },
+      'C-107': { booth: 'C-107', name: '아리웍스', x: 3, y: 4 },
+      'C-108': { booth: 'C-108', name: '듀윗드로우', x: 3, y: 4 },
+      'C-109': { booth: 'C-109', name: '루싀', x: 3, y: 5 },
+      'C-110': { booth: 'C-110', name: 'C-110 부스', x: 3, y: 5 },
+      'C-201': { booth: 'C-201', name: '알로하 스튜디오', x: 3, y: 1 },
+      'C-202': { booth: 'C-202', name: '양면테이프(박주현) / 체리쉬 베이커리', x: 3, y: 1 },
+      'C-203': { booth: 'C-203', name: '알로하 스튜디오', x: 3, y: 2 },
+      'C-204': { booth: 'C-204', name: '봄냉이골골송', x: 3, y: 2 },
+      'C-205': { booth: 'C-205', name: '해피해피무', x: 3, y: 3 },
+      'C-206': { booth: 'C-206', name: '노마', x: 3, y: 3 },
+      'C-207': { booth: 'C-207', name: '니어바이디어', x: 3, y: 4 },
+      'C-208': { booth: 'C-208', name: '신도87', x: 3, y: 4 },
+      'C-209': { booth: 'C-209', name: '더푸리 빌리지 / 후잉&오띠', x: 3, y: 5 },
+      'C-210': { booth: 'C-210', name: '포레몽', x: 3, y: 5 },
+
+      // D 구역
+      'D-101': { booth: 'D-101', name: '잡동사니', x: 4, y: 1 },
+      'D-102': { booth: 'D-102', name: '메이빈 / 위니앤마오', x: 4, y: 1 },
+      'D-103': { booth: 'D-103', name: '도순상점', x: 4, y: 2 },
+      'D-104': { booth: 'D-104', name: '리노프렌즈', x: 4, y: 2 },
+      'D-105': { booth: 'D-105', name: 'D-105 부스', x: 4, y: 3 },
+      'D-106': { booth: 'D-106', name: '하나비', x: 4, y: 3 },
+      'D-107': { booth: 'D-107', name: '나꽁아꽁', x: 4, y: 4 },
+      'D-108': { booth: 'D-108', name: '개구리라미 / 마쉬메모', x: 2, y: 5 },
+      'D-109': { booth: 'D-109', name: '썸캣츠 / 아델리드로우', x: 4, y: 5 },
+      'D-110': { booth: 'D-110', name: '양치', x: 4, y: 5 },
+      'D-201': { booth: 'D-201', name: '제제유니버스', x: 4, y: 1 },
+      'D-202': { booth: 'D-202', name: 'D-202 부스', x: 4, y: 1 },
+      'D-203': { booth: 'D-203', name: '아워 루키', x: 4, y: 2 },
+      'D-204': { booth: 'D-204', name: '블루즈', x: 4, y: 2 },
+      'D-205': { booth: 'D-205', name: '딩굴댕굴 / 젠디디', x: 4, y: 3 },
+      'D-206': { booth: 'D-206', name: 'D-206 부스', x: 4, y: 3 },
+      'D-207': { booth: 'D-207', name: '소푸', x: 4, y: 4 },
+      'D-208': { booth: 'D-208', name: '스위비 스튜디오', x: 4, y: 4 },
+      'D-209': { booth: 'D-209', name: '라라하우스', x: 4, y: 5 },
+      'D-210': { booth: 'D-210', name: '히히클럽', x: 4, y: 5 },
+
+      // F 구역
+      'F-101': { booth: 'F-101', name: '폴티커', x: 5, y: 1 },
+      'F-102': { booth: 'F-102', name: '라연팬시', x: 5, y: 1 },
+      'F-104': { booth: 'F-104', name: '스튜디오 아르비', x: 5, y: 2 },
+      'F-105': { booth: 'F-105', name: 'F-105 부스', x: 5, y: 3 },
+      'F-106': { booth: 'F-106', name: '늉늉샵', x: 5, y: 3 },
+      'F-107': { booth: 'F-107', name: '히야네', x: 5, y: 3 },
+      'F-108': { booth: 'F-108', name: '쿠마쿠마클럽', x: 5, y: 4 },
+      'F-109': { booth: 'F-109', name: '스트롱 배리', x: 5, y: 4 },
+      'F-110': { booth: 'F-110', name: '영이', x: 5, y: 3 },
+      'F-201': { booth: 'F-201', name: '크렘봉봉', x: 5, y: 1 },
+      'F-202': { booth: 'F-202', name: 'F-202 아티스트 부스', x: 5, y: 1 },
+      'F-203': { booth: 'F-203', name: '힝고미', x: 5, y: 2 },
+      'F-204': { booth: 'F-204', name: '도롱상점', x: 5, y: 2 },
+      'F-205': { booth: 'F-205', name: '맹꽁씨는 뭘해도 귀여워!', x: 5, y: 3 },
+      'F-206': { booth: 'F-206', name: '3분수채초상화 / TAM 모든 순간을 칠하다.', x: 6, y: 3 },
+      'F-207': { booth: 'F-207', name: '백상아 / 뿌리별', x: 5, y: 4 },
+      'F-208': { booth: 'F-208', name: '더나인프루츠', x: 5, y: 4 },
+      'F-209': { booth: 'F-209', name: '모도리 스튜디오', x: 5, y: 5 },
+      'F-210': { booth: 'F-210', name: '도자기 굽는 고양이', x: 5, y: 5 },
+
+      // G 구역
+      'G-101': { booth: 'G-101', name: '알순마켓', x: 6, y: 1 },
+      'G-102': { booth: 'G-102', name: '테일백', x: 6, y: 1 },
+      'G-103': { booth: 'G-103', name: '별빛다움', x: 6, y: 2 },
+      'G-104': { booth: 'G-104', name: '메이마르', x: 6, y: 2 },
+      'G-105': { booth: 'G-105', name: 'G-105 부스', x: 6, y: 3 },
+      'G-106': { booth: 'G-106', name: '초롱이와 하나님', x: 6, y: 3 },
+      'G-107': { booth: 'G-107', name: '체리주의보', x: 6, y: 3 },
+      'G-108': { booth: 'G-108', name: '치코', x: 6, y: 4 },
+      'G-109': { booth: 'G-109', name: '연메이드', x: 6, y: 4 },
+      'G-110': { booth: 'G-110', name: '지리', x: 6, y: 5 },
+      'G-201': { booth: 'G-201', name: '앵디스튜디오', x: 6, y: 1 },
+      'G-202': { booth: 'G-202', name: 'G-202 부스', x: 6, y: 1 },
+      'G-203': { booth: 'G-203', name: '도아세 / 육공이농장', x: 6, y: 2 },
+      'G-204': { booth: 'G-204', name: '곰곰', x: 6, y: 2 },
+      'G-205': { booth: 'G-205', name: '룹비긴즈 / 하리무드', x: 6, y: 3 },
+      'G-206': { booth: 'G-206', name: '으스스상점', x: 6, y: 3 },
+      'G-207': { booth: 'G-207', name: '담담', x: 6, y: 4 },
+      'G-208': { booth: 'G-208', name: '광스웍스 (kwangs.works)', x: 6, y: 4 },
+      'G-209': { booth: 'G-209', name: '민디월드', x: 6, y: 5 },
+      'G-210': { booth: 'G-210', name: '토끼털 연구소', x: 6, y: 5 },
+
+      // H 구역
+      'H-101': { booth: 'H-101', name: 'H-101 부스', x: 7, y: 1 },
+      'H-102': { booth: 'H-102', name: '앵그리 아줌마', x: 7, y: 1 },
+      'H-103': { booth: 'H-103', name: '어버블크러쉬', x: 7, y: 2 },
+      'H-104': { booth: 'H-104', name: '아쿵문구', x: 7, y: 2 },
+      'H-105': { booth: 'H-105', name: '나만의 싸인만들기 사인어스 / 지제 스튜디오', x: 7, y: 3 },
+      'H-106': { booth: 'H-106', name: '모모이하우스', x: 7, y: 3 },
+      'H-107': { booth: 'H-107', name: '백구삼스튜디오 / 히다마리', x: 7, y: 4 },
+      'H-108': { booth: 'H-108', name: 'H-108 부스', x: 7, y: 4 },
+      'H-109': { booth: 'H-109', name: '팡퐁문구점', x: 7, y: 5 },
+      'H-110': { booth: 'H-110', name: '은빛길xapril_blob', x: 7, y: 5 },
+      'H-201': { booth: 'H-201', name: 'H-201 부스', x: 7, y: 1 },
+      'H-202': { booth: 'H-202', name: '뮤디뮤디', x: 7, y: 1 },
+      'H-203': { booth: 'H-203', name: '고롱랩 / 모모집사', x: 7, y: 2 },
+      'H-204': { booth: 'H-204', name: '으나네작업실', x: 7, y: 2 },
+      'H-205': { booth: 'H-205', name: '라리링', x: 7, y: 3 },
+      'H-206': { booth: 'H-206', name: '팔베개', x: 7, y: 3 },
+      'H-207': { booth: 'H-207', name: '한입거리친구들', x: 7, y: 4 },
+      'H-208': { booth: 'H-208', name: '열두달,굽낭', x: 7, y: 4 },
+      'H-209': { booth: 'H-209', name: '디어', x: 7, y: 5 },
+      'H-210': { booth: 'H-210', name: '우조', x: 7, y: 5 },
+
+      // J 구역
+      'J-101': { booth: 'J-101', name: '호랑', x: 8, y: 1 },
+      'J-102': { booth: 'J-102', name: 'J-102 부스', x: 8, y: 1 },
+      'J-103': { booth: 'J-103', name: '말랭즈', x: 8, y: 2 },
+      'J-104': { booth: 'J-104', name: '아타모먼트', x: 8, y: 2 },
+      'J-105': { booth: 'J-105', name: '블룸블룸 스튜디오', x: 8, y: 3 },
+      'J-106': { booth: 'J-106', name: '슈&크림', x: 8, y: 3 },
+      'J-107': { booth: 'J-107', name: 'J-107 부스', x: 8, y: 4 },
+      'J-108': { booth: 'J-108', name: '루아', x: 8, y: 4 },
+      'J-109': { booth: 'J-109', name: '아토꽁', x: 8, y: 5 },
+      'J-110': { booth: 'J-110', name: '저채온도', x: 8, y: 5 },
+      'J-201': { booth: 'J-201', name: '작업실:누누', x: 8, y: 1 },
+      'J-202': { booth: 'J-202', name: 'J-202 부스', x: 8, y: 1 },
+      'J-203': { booth: 'J-203', name: '닮담', x: 8, y: 2 },
+      'J-204': { booth: 'J-204', name: '인정이네', x: 8, y: 2 },
+      'J-205': { booth: 'J-205', name: '댐로잉 / 스튜디오 소소한', x: 8, y: 3 },
+      'J-206': { booth: 'J-206', name: '밀디블랙', x: 8, y: 3 },
+      'J-207': { booth: 'J-207', name: '간밤에 아답', x: 4, y: 3 },
+      'J-208': { booth: 'J-208', name: '미호 / 트루디아', x: 8, y: 4 },
+      'J-209': { booth: 'J-209', name: '마냥', x: 8, y: 5 },
+      'J-210': { booth: 'J-210', name: '우잉드로잉', x: 8, y: 5 },
+
+      // K 구역
+      'K-101': { booth: 'K-101', name: '콩둥이네', x: 9, y: 1 },
+      'K-102': { booth: 'K-102', name: '뽀도의 일상', x: 9, y: 1 },
+      'K-103': { booth: 'K-103', name: '라이셀소다', x: 9, y: 2 },
+      'K-104': { booth: 'K-104', name: '차소금 상점', x: 9, y: 2 },
+      'K-105': { booth: 'K-105', name: '미미비티아이 / 삼햄찌', x: 9, y: 3 },
+      'K-106': { booth: 'K-106', name: 'K-106 부스', x: 9, y: 3 },
+      'K-107': { booth: 'K-107', name: 'K-107 부스', x: 9, y: 4 },
+      'K-108': { booth: 'K-108', name: '세로니의 정원', x: 9, y: 4 },
+      'K-109': { booth: 'K-109', name: '결 From.Gyeol / 노엔오리지날', x: 9, y: 5 },
+      'K-110': { booth: 'K-110', name: 'K-110 부스', x: 9, y: 5 },
+      'K-201': { booth: 'K-201', name: 'K-201 부스', x: 9, y: 1 },
+      'K-202': { booth: 'K-202', name: '난고 소복점', x: 9, y: 1 },
+      'K-203': { booth: 'K-203', name: '갸루 공듀 클럽', x: 9, y: 2 },
+      'K-204': { booth: 'K-204', name: '그린 판타지아', x: 4, y: 5 },
+      'K-205': { booth: 'K-205', name: '당당이네', x: 9, y: 3 },
+      'K-206': { booth: 'K-206', name: '도담도담 스토리 / 리벳', x: 9, y: 3 },
+      'K-207': { booth: 'K-207', name: '미뚜 / 쿤: 몽환기록', x: 9, y: 4 },
+      'K-208': { booth: 'K-208', name: '보곰이잡화점', x: 9, y: 4 },
+      'K-209': { booth: 'K-209', name: '벨르래라', x: 9, y: 5 },
+      'K-210': { booth: 'K-210', name: '스튜디오 쪼물', x: 9, y: 5 },
+
+      // L 구역
+      'L-101': { booth: 'L-101', name: '지마랜드', x: 10, y: 1 },
+      'L-102': { booth: 'L-102', name: '뮤즈 온', x: 10, y: 1 },
+      'L-103': { booth: 'L-103', name: '멜로드림', x: 10, y: 2 },
+      'L-104': { booth: 'L-104', name: '몽슈슈 / 스튜디오 오트 / 아이네블루메', x: 10, y: 2 },
+      'L-105': { booth: 'L-105', name: 'L-105 부스', x: 10, y: 3 },
+      'L-106': { booth: 'L-106', name: 'L-106 부스', x: 10, y: 3 },
+      'L-107': { booth: 'L-107', name: '문학굿즈샵', x: 10, y: 4 },
+      'L-108': { booth: 'L-108', name: '서예린', x: 10, y: 4 },
+      'L-109': { booth: 'L-109', name: '단비스페이스 / 탱자올시다', x: 10, y: 5 },
+      'L-110': { booth: 'L-110', name: '효이모음집', x: 10, y: 5 },
+      'L-201': { booth: 'L-201', name: '노베지치에', x: 10, y: 1 },
+      'L-202': { booth: 'L-202', name: '무늬사이', x: 10, y: 1 },
+      'L-203': { booth: 'L-203', name: '멜로우데이 / 모구샵', x: 4, y: 7 },
+      'L-204': { booth: 'L-204', name: 'L-204 부스', x: 10, y: 2 },
+      'L-205': { booth: 'L-205', name: '싱긋마켓', x: 10, y: 3 },
+      'L-206': { booth: 'L-206', name: '아리스마켓', x: 10, y: 3 },
+      'L-207': { booth: 'L-207', name: '쪼람쥐', x: 10, y: 4 },
+      'L-208': { booth: 'L-208', name: '미찌샵', x: 10, y: 4 },
+      'L-209': { booth: 'L-209', name: 'L-209 부스', x: 10, y: 5 },
+      'L-210': { booth: 'L-210', name: '프롬', x: 10, y: 5 },
+
+      // M 구역
+      'M-101': { booth: 'M-101', name: '궁둥지 & 앙꾸 / 먕이', x: 2, y: 7 },
+      'M-102': { booth: 'M-102', name: 'M-102 부스', x: 2, y: 1 },
+      'M-103': { booth: 'M-103', name: '파곰이네 야채가게', x: 2, y: 2 },
+      'M-104': { booth: 'M-104', name: '응꾸', x: 2, y: 2 },
+      'M-105': { booth: 'M-105', name: '젯젯', x: 2, y: 3 },
+      'M-106': { booth: 'M-106', name: 'M-106 부스', x: 2, y: 3 },
+      'M-107': { booth: 'M-107', name: 'M-107 부스', x: 2, y: 4 },
+      'M-108': { booth: 'M-108', name: '쏘곰즈', x: 2, y: 4 },
+      'M-109': { booth: 'M-109', name: '이해담 / 퍽퍽한 오리감자 , 오감이', x: 2, y: 5 },
+      'M-110': { booth: 'M-110', name: 'M-110 부스', x: 2, y: 5 },
+      'M-201': { booth: 'M-201', name: '마냐냐 / 푸키큐티', x: 2, y: 1 },
+      'M-202': { booth: 'M-202', name: '데일리유', x: 2, y: 1 },
+      'M-203': { booth: 'M-203', name: '매드로즈', x: 2, y: 2 },
+      'M-204': { booth: 'M-204', name: '황다람', x: 2, y: 2 },
+      'M-205': { booth: 'M-205', name: '히키차카푸', x: 2, y: 3 },
+      'M-206': { booth: 'M-206', name: '체리 바이트 하우스', x: 2, y: 3 },
+      'M-207': { booth: 'M-207', name: '밤비 / 피키', x: 2, y: 4 },
+      'M-208': { booth: 'M-208', name: '채서', x: 2, y: 4 },
+      'M-209': { booth: 'M-209', name: '러브앤문', x: 2, y: 5 },
+      'M-210': { booth: 'M-210', name: '또토', x: 2, y: 5 },
+
+      // O 구역
+      'O-101': { booth: 'O-101', name: '고등어전문점 / 고산타', x: 10, y: 7 },
+      'O-102': { booth: 'O-102', name: 'O-102 부스', x: 3, y: 1 },
+      'O-103': { booth: 'O-103', name: '별하얀공예공방 / 하울하트클럽', x: 3, y: 2 },
+      'O-104': { booth: 'O-104', name: '유지', x: 3, y: 2 },
+      'O-105': { booth: 'O-105', name: '시어터모리 / 어노디어 스튜디오 / 찌봄', x: 3, y: 3 },
+      'O-106': { booth: 'O-106', name: '귤귤 / 오뚝이숲', x: 3, y: 3 },
+      'O-107': { booth: 'O-107', name: '벨로이루', x: 3, y: 4 },
+      'O-108': { booth: 'O-108', name: '소복썸 / 올망졸망', x: 3, y: 4 },
+      'O-109': { booth: 'O-109', name: '오포세포', x: 3, y: 5 },
+      'O-110': { booth: 'O-110', name: 'O-110 부스', x: 3, y: 5 },
+      'O-201': { booth: 'O-201', name: 'O-201 부스', x: 3, y: 1 },
+      'O-202': { booth: 'O-202', name: '에글플레이팅', x: 3, y: 1 },
+      'O-203': { booth: 'O-203', name: 'O-203 부스', x: 3, y: 2 },
+      'O-204': { booth: 'O-204', name: '지우:)', x: 3, y: 2 },
+      'O-205': { booth: 'O-205', name: 'O-205 부스', x: 3, y: 3 },
+      'O-206': { booth: 'O-206', name: '모야', x: 3, y: 3 },
+      'O-207': { booth: 'O-207', name: '데이즈어느날이야기', x: 3, y: 4 },
+      'O-208': { booth: 'O-208', name: 'O-208 부스', x: 3, y: 4 },
+      'O-209': { booth: 'O-209', name: 'O-209 부스', x: 3, y: 5 },
+      'O-210': { booth: 'O-210', name: '카페피피차차', x: 3, y: 5 },
+
+      // P 구역
+      'P-101': { booth: 'P-101', name: '코스모 익스프레스', x: 4, y: 1 },
+      'P-102': { booth: 'P-102', name: '마법사고양상점 / 빠삐루', x: 4, y: 1 },
+      'P-103': { booth: 'P-103', name: 'P-103 부스', x: 4, y: 2 },
+      'P-104': { booth: 'P-104', name: '알루에티', x: 4, y: 2 },
+      'P-105': { booth: 'P-105', name: '문구대학', x: 4, y: 3 },
+      'P-106': { booth: 'P-106', name: '라운드우프', x: 4, y: 3 },
+      'P-107': { booth: 'P-107', name: 'P-107 부스', x: 4, y: 4 },
+      'P-108': { booth: 'P-108', name: '리동네친구들 / 밀키랩스터', x: 4, y: 4 },
+      'P-109': { booth: 'P-109', name: '뜨리오 스튜디오', x: 4, y: 5 },
+      'P-110': { booth: 'P-110', name: '다로시루', x: 4, y: 5 },
+      'P-201': { booth: 'P-201', name: 'P-201 부스', x: 4, y: 1 },
+      'P-202': { booth: 'P-202', name: 'P-202 부스', x: 4, y: 1 },
+      'P-203': { booth: 'P-203', name: '소하 & 리티데이', x: 4, y: 2 },
+      'P-204': { booth: 'P-204', name: '소소혜', x: 4, y: 2 },
+      'P-205': { booth: 'P-205', name: '앙고라로라 / 하팽', x: 4, y: 3 },
+      'P-206': { booth: 'P-206', name: '삐쭈', x: 4, y: 3 },
+      'P-207': { booth: 'P-207', name: '초코메로', x: 4, y: 4 },
+      'P-208': { booth: 'P-208', name: '플라워볼', x: 4, y: 4 },
+      'P-209': { booth: 'P-209', name: '럽피클럽', x: 4, y: 5 },
+      'P-210': { booth: 'P-210', name: '정재관', x: 4, y: 5 },
+
+      // Q 구역
+      'Q-101': { booth: 'Q-101', name: '토끼가 깡총', x: 8, y: 1 },
+      'Q-102': { booth: 'Q-102', name: '포와포와즈', x: 8, y: 1 },
+      'Q-103': { booth: 'Q-103', name: '엄스캣치', x: 8, y: 2 },
+      'Q-104': { booth: 'Q-104', name: '곤양의 숲 / 피바타임', x: 8, y: 2 },
+      'Q-105': { booth: 'Q-105', name: '아이렌', x: 8, y: 3 },
+      'Q-106': { booth: 'Q-106', name: '모던보이', x: 8, y: 3 },
+      'Q-107': { booth: 'Q-107', name: '포글포글', x: 8, y: 4 },
+      'Q-108': { booth: 'Q-108', name: 'Q-108 부스', x: 8, y: 4 },
+      'Q-109': { booth: 'Q-109', name: 'Q-109 부스', x: 8, y: 5 },
+      'Q-110': { booth: 'Q-110', name: '스트로베리 갈레트', x: 8, y: 5 },
+      'Q-201': { booth: 'Q-201', name: '꿈꾸는가을', x: 8, y: 7 },
+      'Q-202': { booth: 'Q-202', name: '수하팩토리 / 찹쌀손', x: 8, y: 1 },
+      'Q-203': { booth: 'Q-203', name: 'Q-203 부스', x: 8, y: 1 },
+      'Q-204': { booth: 'Q-204', name: '스물상점', x: 8, y: 2 },
+      'Q-205': { booth: 'Q-205', name: '루나리', x: 8, y: 3 },
+      'Q-206': { booth: 'Q-206', name: '도깨비 화방', x: 8, y: 9 },
+      'Q-207': { booth: 'Q-207', name: '리타플래닛', x: 8, y: 4 },
       'Q-208': { booth: 'Q-208', name: 'Atoo Studio (아투 스튜디오)', x: 8, y: 10 },
-      'D-108': { booth: 'D-108', name: '개구리라미', x: 2, y: 5 },
+      'Q-209': { booth: 'Q-209', name: '단추네재봉소 / 쫑스튜디오', x: 8, y: 5 },
+      'Q-210': { booth: 'Q-210', name: '댕댕백과', x: 8, y: 5 },
+
+      // R 구역
+      'R-101': { booth: 'R-101', name: 'R-101 부스', x: 10, y: 1 },
+      'R-102': { booth: 'R-102', name: '로코피엘', x: 10, y: 1 },
+      'R-103': { booth: 'R-103', name: '뚠스토리', x: 10, y: 2 },
+      'R-104': { booth: 'R-104', name: '젤라틴 오션즈', x: 10, y: 2 },
+      'R-105': { booth: 'R-105', name: '미스베이커리', x: 10, y: 3 },
+      'R-106': { booth: 'R-106', name: 'R-106 부스', x: 10, y: 3 },
+      'R-107': { booth: 'R-107', name: '마린스노우', x: 10, y: 4 },
+      'R-108': { booth: 'R-108', name: '모구샵', x: 10, y: 4 },
+      'R-109': { booth: 'R-109', name: '부스러기 하우스', x: 10, y: 5 },
+      'R-110': { booth: 'R-110', name: '썸웜노트', x: 10, y: 5 },
+      'R-201': { booth: 'R-201', name: '공룡수족관', x: 10, y: 1 },
+      'R-202': { booth: 'R-202', name: 'R-202 부스', x: 10, y: 1 },
+      'R-203': { booth: 'R-203', name: '페이젤', x: 10, y: 2 },
+      'R-204': { booth: 'R-204', name: '오라프렌즈 / 일랑빛', x: 10, y: 2 },
+      'R-205': { booth: 'R-205', name: '무해무해', x: 10, y: 3 },
+      'R-206': { booth: 'R-206', name: '몽달 / 수수', x: 10, y: 9 },
+      'R-207': { booth: 'R-207', name: '빵지샵', x: 10, y: 4 },
+      'R-208': { booth: 'R-208', name: '산호', x: 10, y: 4 },
+      'R-209': { booth: 'R-209', name: '박오이', x: 10, y: 5 },
+      'R-210': { booth: 'R-210', name: '뚱땅이의 얼렁뚱땅상점', x: 10, y: 5 },
+
+      // S 구역
+      'S-101': { booth: 'S-101', name: '디엠피 북스토아', x: 1, y: 1 },
+      'S-102': { booth: 'S-102', name: '땡돌땡돌', x: 1, y: 1 },
+      'S-103': { booth: 'S-103', name: '요미미,붕꼬양', x: 1, y: 2 },
+      'S-104': { booth: 'S-104', name: '쏘피랜드', x: 1, y: 2 },
+      'S-105': { booth: 'S-105', name: '냥냥따', x: 1, y: 3 },
+      'S-106': { booth: 'S-106', name: '이유연', x: 1, y: 3 },
+      'S-109': { booth: 'S-109', name: '이븐똣', x: 1, y: 4 },
+      'S-110': { booth: 'S-110', name: '숲 공방, 포틴이네', x: 1, y: 5 },
+      'S-111': { booth: 'S-111', name: '윰즈', x: 1, y: 5 },
+      'S-112': { booth: 'S-112', name: '마이 리틀 갤러리', x: 1, y: 6 },
+      'S-113': { booth: 'S-113', name: '울호네 작은마을', x: 1, y: 6 },
+
+      // T 구역
+      'T-101': { booth: 'T-101', name: '한림사', x: 5, y: 1 },
+      'T-102': { booth: 'T-102', name: '허당 하마 하뽀링', x: 5, y: 1 },
+      'T-103': { booth: 'T-103', name: 'T-103 부스', x: 5, y: 2 },
+      'T-104': { booth: 'T-104', name: '젤리페리(Jelly Fairy)', x: 5, y: 2 },
+      'T-105': { booth: 'T-105', name: '스튜디오 깨보리', x: 5, y: 2 },
+      'T-106': { booth: 'T-106', name: '망토와 깽구리', x: 5, y: 3 },
+      'T-107': { booth: 'T-107', name: '고고마스튜디오', x: 5, y: 3 },
+      'T-109': { booth: 'T-109', name: '아구', x: 5, y: 4 },
+      'T-110': { booth: 'T-110', name: '가빈', x: 2, y: 1 },
+      'T-112': { booth: 'T-112', name: '캘리플로라', x: 5, y: 5 },
+      'T-119': { booth: 'T-119', name: '폼폼룸', x: 5, y: 6 },
+      'T-120': { booth: 'T-120', name: '제로', x: 5, y: 6 },
+      'T-121': { booth: 'T-121', name: '사미', x: 5, y: 7 },
+      'T-122': { booth: 'T-122', name: '보쉬랑', x: 5, y: 7 },
+      'T-123': { booth: 'T-123', name: '코토노이', x: 5, y: 8 },
+      'T-124': { booth: 'T-124', name: '시즈카모리', x: 5, y: 8 },
+      'T-125': { booth: 'T-125', name: '언라벨 타래', x: 5, y: 9 },
+      'T-126': { booth: 'T-126', name: '이비데이', x: 5, y: 9 },
+      'T-127': { booth: 'T-127', name: '사룽방구, 어모스트에브리데이', x: 5, y: 10 },
+      'T-128': { booth: 'T-128', name: '치리클럽', x: 5, y: 10 },
+      'T-129': { booth: 'T-129', name: '라고미네집', x: 5, y: 11 },
+      'T-130': { booth: 'T-130', name: '띠뚜네', x: 5, y: 11 },
+      'T-131': { booth: 'T-131', name: '이파두호 스튜디오', x: 5, y: 1 },
+      'T-132': { booth: 'T-132', name: '걸쯔girlzz', x: 5, y: 1 },
+      'T-133': { booth: 'T-133', name: '체리쉬203', x: 5, y: 2 },
+      'T-134': { booth: 'T-134', name: '초롬', x: 5, y: 2 },
+      'T-135': { booth: 'T-135', name: '아이라_몽환의 숲', x: 5, y: 3 },
+      'T-136': { booth: 'T-136', name: '마고즈', x: 5, y: 3 },
+      'T-137': { booth: 'T-137', name: '납갬달', x: 5, y: 4 },
+      'T-138': { booth: 'T-138', name: '산뽀', x: 5, y: 4 },
+      'T-139': { booth: 'T-139', name: '차차', x: 5, y: 5 },
+      'T-140': { booth: 'T-140', name: 'T-140 부스', x: 5, y: 5 },
+      'T-141': { booth: 'T-141', name: '햄리', x: 5, y: 6 },
+      'T-142': { booth: 'T-142', name: '아인클럽', x: 5, y: 6 },
+      'T-143': { booth: 'T-143', name: '조카토카와 감탱이', x: 5, y: 7 },
+      'T-144': { booth: 'T-144', name: '루프스튜디오', x: 5, y: 7 },
+      'T-145': { booth: 'T-145', name: '프프(프리즐프렌즈)', x: 5, y: 8 },
+      'T-146': { booth: 'T-146', name: '한여름과한겨울', x: 9, y: 1 },
+
+      // 기획관 & 라이브 부스
+      'LIVE-01': { booth: 'LIVE-01', name: '신효재 (라이브드로잉)', x: 6, y: 1, isEntrance: true },
+      'LIVE-02': { booth: 'LIVE-02', name: '미로소년 (라이브드로잉)', x: 6, y: 1, isEntrance: true },
+      'LIVE-03': { booth: 'LIVE-03', name: '한국화가 신은미 (라이브드로잉)', x: 6, y: 1, isEntrance: true },
+      'LIVE-04': { booth: 'LIVE-04', name: '포지 (라이브드로잉)', x: 6, y: 1, isEntrance: true },
+
+      // 입구
       '금·일요일 입구': { booth: '금·일요일 입구', name: '금·일요일 메인 입구', x: 3, y: 11, isEntrance: true },
       '토요일 입구': { booth: '토요일 입구', name: '토요일 메인 입구', x: 7, y: 11, isEntrance: true }
     };
@@ -563,7 +922,7 @@
           return;
         }
 
-        const boothInfo = pdfBoothDict[targetCode] || { x: 5, y: 5, name: boothName || targetCode };
+        const boothInfo = pdfSilko26[targetCode] || { x: 5, y: 5, name: boothName || targetCode };
         const newLoc = {
           key: `CUSTOM_${Date.now()}`,
           booth: targetCode,
@@ -587,8 +946,8 @@
       };
 
       const getStartPoint = (key) => {
-        if (pdfBoothDict[key]) {
-          return { x: pdfBoothDict[key].x, y: pdfBoothDict[key].y };
+        if (pdfSilko26[key]) {
+          return { x: pdfSilko26[key].x, y: pdfSilko26[key].y };
         }
         const customMatch = customStartLocations.find(c => c.key === key);
         if (customMatch) {
@@ -861,7 +1220,7 @@
             }
           } else {
             // Default sample when no photo uploaded yet
-            const fallback = pdfBoothDict['F-110'];
+            const fallback = pdfSilko26['F-110'];
             setOcrForm({ booth: fallback.booth, name: fallback.name, memo: '📸 샘플 OCR 스캔 부스' });
             showToast(`⚡ 샘플 OCR 인식: ${fallback.booth} (${fallback.name})`);
           }
@@ -1694,8 +2053,8 @@
                             const startPt = getStartPoint(startLocationKey);
                             const targets = selected.map(b => ({
                               ...b,
-                              x: pdfBoothDict[b.booth]?.x || b.x || 4,
-                              y: pdfBoothDict[b.booth]?.y || b.y || 4
+                              x: pdfSilko26[b.booth]?.x || b.x || 4,
+                              y: pdfSilko26[b.booth]?.y || b.y || 4
                             }));
                             const orderedTargets = calculateOptimalOrder(startPt, targets);
                             
@@ -2673,7 +3032,7 @@
                           showToast('부스 번호를 입력하거나 스캔해 주세요.');
                           return;
                         }
-                        const boothObj = pdfBoothDict[ocrForm.booth] || { x: 5, y: 5 };
+                        const boothObj = pdfSilko26[ocrForm.booth] || { x: 5, y: 5 };
                         const newBm = {
                           id: Date.now(),
                           booth: ocrForm.booth,

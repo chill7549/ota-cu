@@ -1,5 +1,5 @@
-// Ota-Cu Service Worker for PWA App Support - v11 (OCR Modal Booth Search & Booth Code Normalization)
-const CACHE_NAME = 'otacu-cache-v11';
+// Ota-Cu Service Worker for PWA App Support - v12 (Complete Seoul Illustration Korea 2026 pdfSilko26 Booth DB)
+const CACHE_NAME = 'otacu-cache-v12';
 const urlsToCache = [
   './',
   './index.html',

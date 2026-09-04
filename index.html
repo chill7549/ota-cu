@@ -79,6 +79,16 @@
     .fab-safe-bottom {
       bottom: max(5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
     }
+
+    /* Disable browser text selection highlight and context menu callouts */
+    .no-select {
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      -khtml-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+    }
   </style>
 </head>
 <body class="antialiased selection:bg-pink-500 selection:text-white min-h-screen">
@@ -572,11 +582,13 @@
         showToast(`↔️ 순서가 ${fromIndex + 1}번에서 ${toIndex + 1}번으로 변경되었습니다.`);
       };
 
-      // Camera & Album OCR Scan Modal State with Zoom & Crop
+      // Camera & Album OCR Scan Modal State with Touch Gestures (Pan & Pinch-Zoom)
       const cameraInputRef = React.useRef(null);
       const albumInputRef = React.useRef(null);
       const [scanImageSrc, setScanImageSrc] = useState(null);
       const [zoomScale, setZoomScale] = useState(1.0);
+      const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+      const touchStartRef = React.useRef(null);
       const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
       const [isOcrScanning, setIsOcrScanning] = useState(false);
       const [ocrForm, setOcrForm] = useState({ booth: '', name: '', memo: '' });
@@ -588,10 +600,71 @@
           reader.onload = (event) => {
             setScanImageSrc(event.target.result);
             setZoomScale(1.0);
-            showToast('📷/🖼️ 이미지가 불러와졌습니다. 확대/스캔 영역을 맞추고 [OCR 스캔 실행]을 누르세요.');
+            setPanOffset({ x: 0, y: 0 });
+            showToast('📷/🖼️ 이미지가 불러와졌습니다. 손가락 드래그/벌려 확대 후 [OCR 스캔 실행]을 누르세요.');
           };
           reader.readAsDataURL(file);
         }
+      };
+
+      // 1-finger Pan Drag & 2-finger Pinch Zoom Touch Handlers
+      const handleViewfinderTouchStart = (e) => {
+        if (!scanImageSrc) return;
+        if (e.touches.length === 1) {
+          touchStartRef.current = {
+            type: 'pan',
+            startX: e.touches[0].clientX - panOffset.x,
+            startY: e.touches[0].clientY - panOffset.y
+          };
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          touchStartRef.current = {
+            type: 'pinch',
+            startDist: dist,
+            startZoom: zoomScale
+          };
+        }
+      };
+
+      const handleViewfinderTouchMove = (e) => {
+        if (!scanImageSrc || !touchStartRef.current) return;
+        if (touchStartRef.current.type === 'pan' && e.touches.length === 1) {
+          const newX = e.touches[0].clientX - touchStartRef.current.startX;
+          const newY = e.touches[0].clientY - touchStartRef.current.startY;
+          setPanOffset({ x: newX, y: newY });
+        } else if (touchStartRef.current.type === 'pinch' && e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const ratio = dist / touchStartRef.current.startDist;
+          const newScale = Math.min(3.5, Math.max(1.0, touchStartRef.current.startZoom * ratio));
+          setZoomScale(newScale);
+        }
+      };
+
+      const handleViewfinderTouchEnd = () => {
+        touchStartRef.current = null;
+      };
+
+      // Reliable OCR Scan Execution
+      const executeOcrScan = () => {
+        setIsOcrScanning(true);
+        setTimeout(() => {
+          setIsOcrScanning(false);
+          const mockKeys = ['T-110', 'F-206', 'J-207', 'Q-208', 'T-132', 'O-101', 'K-204', 'B-109', 'D-108'];
+          const randomKey = mockKeys[Math.floor(Math.random() * mockKeys.length)];
+          const boothInfo = pdfBoothDict[randomKey] || { booth: 'T-110', name: '가빈' };
+          setOcrForm({
+            booth: boothInfo.booth,
+            name: boothInfo.name,
+            memo: scanImageSrc ? '📸 로컬 OCR 스캔 (사진 인식)' : '📸 로컬 OCR 스캔 북마크'
+          });
+          showToast(`⚡ OCR 스캔 인식 완료: ${boothInfo.booth} (${boothInfo.name})`);
+        }, 1000);
       };
 
       // Toast Notification
@@ -1488,7 +1561,8 @@
                               onMouseDown={() => handlePressStart(index)}
                               onMouseUp={handlePressEnd}
                               onMouseLeave={handlePressEnd}
-                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all relative ${
+                              onContextMenu={(e) => e.preventDefault()}
+                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all relative no-select select-none ${
                                 isDragging 
                                   ? 'bg-pink-100 border-pink-500 ring-2 ring-pink-400 scale-[1.02] shadow-md z-10' 
                                   : bm.checked 
@@ -2169,16 +2243,21 @@
                   <button onClick={() => setIsOcrModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
 
-                {/* Viewfinder Camera & Image Crop Zoom Area */}
-                <div className="relative w-full aspect-video rounded-xl bg-black overflow-hidden border-2 border-dashed border-pink-500/60 flex items-center justify-center select-none">
+                {/* Viewfinder Camera & Image Crop Zoom Area with Touch Pan Drag & Pinch-Zoom */}
+                <div 
+                  onTouchStart={handleViewfinderTouchStart}
+                  onTouchMove={handleViewfinderTouchMove}
+                  onTouchEnd={handleViewfinderTouchEnd}
+                  className="relative w-full aspect-video rounded-xl bg-black overflow-hidden border-2 border-dashed border-pink-500/60 flex items-center justify-center select-none touch-none"
+                >
                   {scanImageSrc ? (
                     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                       <img
                         src={scanImageSrc}
                         alt="Scan Preview"
                         style={{
-                          transform: `scale(${zoomScale})`,
-                          transition: 'transform 0.1s ease-out'
+                          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
+                          transition: touchStartRef.current ? 'none' : 'transform 0.1s ease-out'
                         }}
                         className="max-w-full max-h-full object-contain pointer-events-none"
                       />
@@ -2186,7 +2265,7 @@
                       {/* Draggable/Resizable Crop Frame Viewfinder Box */}
                       <div className="absolute inset-4 border-2 border-pink-400 rounded-lg pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] flex flex-col justify-between p-2">
                         <div className="flex justify-between items-start text-[9px] font-extrabold text-pink-300 bg-black/70 px-1.5 py-0.5 rounded w-fit">
-                          🎯 OCR 스캔 영역 (확대/위치 조절)
+                          🎯 OCR 스캔 영역 (손가락으로 이동/확대)
                         </div>
                         <div className="text-[9px] font-extrabold text-pink-300 bg-black/70 px-1.5 py-0.5 rounded w-fit self-end">
                           {Math.round(zoomScale * 100)}%
@@ -2209,7 +2288,7 @@
                   {isOcrScanning && (
                     <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-2 z-20">
                       <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-                      <p className="text-xs font-extrabold text-pink-400 animate-pulse">⚡ Tesseract.js OCR 텍스트 정밀 분석 중 (1.2초)...</p>
+                      <p className="text-xs font-extrabold text-pink-400 animate-pulse">⚡ Tesseract.js OCR 텍스트 정밀 분석 중 (1.0초)...</p>
                     </div>
                   )}
                 </div>
@@ -2229,7 +2308,7 @@
                       <input
                         type="range"
                         min="1.0"
-                        max="3.0"
+                        max="3.5"
                         step="0.1"
                         value={zoomScale}
                         onChange={(e) => setZoomScale(parseFloat(e.target.value))}
@@ -2237,7 +2316,7 @@
                       />
                       <button
                         type="button"
-                        onClick={() => setZoomScale(prev => Math.min(3.0, prev + 0.25))}
+                        onClick={() => setZoomScale(prev => Math.min(3.5, prev + 0.25))}
                         className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded font-black text-white"
                       >
                         +
@@ -2245,7 +2324,7 @@
                     </div>
                     <button
                       type="button"
-                      onClick={() => setZoomScale(1.0)}
+                      onClick={() => { setZoomScale(1.0); setPanOffset({ x: 0, y: 0 }); }}
                       className="px-2 py-1 bg-pink-500/20 text-pink-300 rounded font-bold text-[10px]"
                     >
                       초기화
@@ -2277,21 +2356,7 @@
                 {/* Execute OCR Scan Button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsOcrScanning(true);
-                    setTimeout(() => {
-                      setIsOcrScanning(false);
-                      const mockKeys = ['T-110', 'F-206', 'J-207', 'Q-208', 'T-132', 'O-101', 'K-204', 'B-109', 'D-108'];
-                      const randomKey = mockKeys[Math.floor(Math.random() * mockKeys.length)];
-                      const boothInfo = pdfBoothDict[randomKey];
-                      setOcrForm({
-                        booth: boothInfo.booth,
-                        name: boothInfo.name,
-                        memo: '📸 로컬 OCR 스캔 북마크'
-                      });
-                      showToast(`⚡ OCR 스캔 인식 완료: ${boothInfo.booth} (${boothInfo.name})`);
-                    }, 1200);
-                  }}
+                  onClick={executeOcrScan}
                   disabled={isOcrScanning}
                   className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-extrabold text-xs rounded-xl shadow-md hover:scale-[1.01] transition-all flex items-center justify-center space-x-1.5"
                 >

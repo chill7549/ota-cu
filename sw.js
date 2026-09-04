@@ -1,5 +1,5 @@
-// Ota-Cu Service Worker for PWA App Support - v7 (Camera/Album OCR, FIFO Start Locations & 0.3s Reorder)
-const CACHE_NAME = 'otacu-cache-v7';
+// Ota-Cu Service Worker for PWA App Support - v8 (Touch Pan/Zoom Gestures & Selection Protection Fix)
+const CACHE_NAME = 'otacu-cache-v8';
 const urlsToCache = [
   './',
   './index.html',

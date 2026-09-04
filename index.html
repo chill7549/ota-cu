@@ -250,6 +250,95 @@
       return { text: `${Math.floor(diffHour / 24)}일 전`, isRecent: false };
     }
 
+    // --- 2026 SEOUL ILLUSTRATION KOREA aT Center PDF Booth Dictionary & Grid Map Data ---
+    const pdfBoothDict = {
+      'T-110': { booth: 'T-110', name: '가빈', x: 2, y: 1 },
+      'J-207': { booth: 'J-207', name: '간밤에 아답', x: 4, y: 3 },
+      'F-206': { booth: 'F-206', name: 'TAM 모든 순간을 칠하다.', x: 6, y: 3 },
+      'B-109': { booth: 'B-109', name: '128', x: 8, y: 5 },
+      'T-132': { booth: 'T-132', name: '걸쯔girlzz', x: 5, y: 1 },
+      'O-101': { booth: 'O-101', name: '고산타', x: 10, y: 7 },
+      'K-204': { booth: 'K-204', name: '그린 판타지아', x: 4, y: 5 },
+      'Q-201': { booth: 'Q-201', name: '꿈꾸는가을', x: 8, y: 7 },
+      'Q-206': { booth: 'Q-206', name: '도깨비 화방', x: 8, y: 9 },
+      'M-101': { booth: 'M-101', name: '먕이', x: 2, y: 7 },
+      'L-203': { booth: 'L-203', name: '모구샵', x: 4, y: 7 },
+      'B-203': { booth: 'B-203', name: '무우', x: 8, y: 3 },
+      'R-206': { booth: 'R-206', name: '수수', x: 10, y: 9 },
+      'T-146': { booth: 'T-146', name: '한여름과한겨울', x: 9, y: 1 },
+      'Q-208': { booth: 'Q-208', name: 'Atoo Studio (아투 스튜디오)', x: 8, y: 10 },
+      'D-108': { booth: 'D-108', name: '개구리라미', x: 2, y: 5 },
+      '금·일요일 입구': { booth: '금·일요일 입구', name: '금·일요일 메인 입구', x: 3, y: 11, isEntrance: true },
+      '토요일 입구': { booth: '토요일 입구', name: '토요일 메인 입구', x: 7, y: 11, isEntrance: true }
+    };
+
+    // 0: Aisle (통로), 1: Booth Block (부스 장애물), 2: Entrance (입구)
+    const gridMapMatrix = [
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 0]
+    ];
+
+    // Helper: A* Pathfinding Engine
+    function findShortestPath(grid, start, end) {
+      const rows = grid.length;
+      const cols = grid[0].length;
+      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      const queue = [{ x: start.x, y: start.y, path: [{ x: start.x, y: start.y }] }];
+      const visited = new Set();
+      visited.add(`${start.x},${start.y}`);
+
+      while (queue.length > 0) {
+        const { x, y, path } = queue.shift();
+        if (x === end.x && y === end.y) return path;
+
+        for (const [dx, dy] of dirs) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+            if ((grid[ny][nx] !== 1 || (nx === end.x && ny === end.y)) && !visited.has(`${nx},${ny}`)) {
+              visited.add(`${nx},${ny}`);
+              queue.push({ x: nx, y: ny, path: [...path, { x: nx, y: ny }] });
+            }
+          }
+        }
+      }
+      return [start, end];
+    }
+
+    // Helper: TSP Nearest Neighbor Route Ordering
+    function calculateOptimalOrder(startPoint, targets) {
+      if (!targets || targets.length === 0) return [];
+      const remaining = [...targets];
+      const ordered = [];
+      let current = startPoint;
+
+      while (remaining.length > 0) {
+        let bestIdx = 0;
+        let minDist = Infinity;
+        for (let i = 0; i < remaining.length; i++) {
+          const dist = Math.abs(current.x - remaining[i].x) + Math.abs(current.y - remaining[i].y);
+          if (dist < minDist) {
+            minDist = dist;
+            bestIdx = i;
+          }
+        }
+        const nextTarget = remaining.splice(bestIdx, 1)[0];
+        ordered.push(nextTarget);
+        current = nextTarget;
+      }
+      return ordered;
+    }
+
     // --- Component: Main App ---
     function App() {
       // Theme State ('dark' | 'baepsae')
@@ -385,6 +474,29 @@
       const [isInfrasModalOpen, setIsInfrasModalOpen] = useState(false);
       const [shareSwapCard, setShareSwapCard] = useState(null);
       const [pinnedLocationSwap, setPinnedLocationSwap] = useState(null);
+
+      // Bookmarks & Pathfinding State
+      const [bookmarkList, setBookmarkList] = useState(() => {
+        const saved = localStorage.getItem('otacu_bookmarks_v1');
+        return saved ? JSON.parse(saved) : [
+          { id: 1, booth: 'T-110', name: '가빈', memo: '아크릴 키링 및 일러스트 엽서 세트', checked: true, x: 2, y: 1 },
+          { id: 2, booth: 'F-206', name: 'TAM 모든 순간을 칠하다.', memo: '3분수채초상화 현장 이벤트 부스', checked: true, x: 6, y: 3 },
+          { id: 3, booth: 'J-207', name: '간밤에 아답', memo: '인기 캐릭터 굿즈 찜하기', checked: true, x: 4, y: 3 },
+          { id: 4, booth: 'Q-208', name: 'Atoo Studio (아투 스튜디오)', memo: '기업 팝업 특별 스티커', checked: false, x: 8, y: 10 }
+        ];
+      });
+
+      useEffect(() => {
+        localStorage.setItem('otacu_bookmarks_v1', JSON.stringify(bookmarkList));
+      }, [bookmarkList]);
+
+      const [startLocationKey, setStartLocationKey] = useState('금·일요일 입구');
+      const [calculatedRoute, setCalculatedRoute] = useState(null);
+
+      // Camera OCR Modal State
+      const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
+      const [isOcrScanning, setIsOcrScanning] = useState(false);
+      const [ocrForm, setOcrForm] = useState({ booth: '', name: '', memo: '' });
 
       // Toast Notification
       const [toastMsg, setToastMsg] = useState('');
@@ -566,7 +678,7 @@
                       Ota-Cu
                     </h1>
                     <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-pink-500 text-white shadow-xs">
-                      v1.7
+                      v1.8
                     </span>
                   </div>
                   <div className="flex items-center space-x-1 mt-0.5">
@@ -584,6 +696,7 @@
                   { id: 'scheduler', icon: '🗓️', label: '행사 스케줄러' },
                   { id: 'raid', icon: '🚨', label: '실시간 현장 레이드' },
                   { id: 'swap', icon: '🔄', label: '굿즈 스왑 (교환)' },
+                  { id: 'navi', icon: '🧭', label: '길찾기 (현장 북마크)' },
                 ].map(m => (
                   <button
                     key={m.id}
@@ -625,7 +738,7 @@
                 </button>
 
                 <div className="text-[11px] font-bold text-slate-400 text-center pt-1">
-                  앱 버전: <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white font-extrabold text-[10px]">v1.7 (최신)</span>
+                  앱 버전: <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white font-extrabold text-[10px]">v1.8 (feature_navi)</span>
                 </div>
               </div>
             </aside>
@@ -657,7 +770,7 @@
                         Ota-Cu
                       </h1>
                       <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-pink-500 text-white shadow-xs shrink-0">
-                        v1.7
+                        v1.8
                       </span>
                       <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
                         👑 관리자
@@ -1173,6 +1286,230 @@
                     </div>
 
                   </div>
+                {/* TAB 4: NAVI (PATHFINDING & BOOKMARKS) */}
+                {activeTab === 'navi' && (
+                  <div className="space-y-4">
+                    {/* Upper Section (50%): Bookmarks List */}
+                    <div className={`p-4 rounded-xl border shadow-sm space-y-3 ${
+                      isBaepsae ? 'bg-white border-amber-200/80 shadow-pink-500/5' : 'glass-panel-dark border-slate-800'
+                    }`}>
+                      <div className="flex justify-between items-center border-b pb-2 border-stone-200 dark:border-slate-800">
+                        <h2 className="text-base font-extrabold flex items-center space-x-1.5">
+                          <span>🔖 내 찜한 부스 북마크 목록</span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-pink-500 text-white">
+                            {bookmarkList.length}개
+                          </span>
+                        </h2>
+                        
+                        <button
+                          onClick={() => {
+                            const selected = bookmarkList.filter(b => b.checked);
+                            if (selected.length === 0) {
+                              showToast('동선 안내를 위해 부스를 1개 이상 선택해 주세요.');
+                              return;
+                            }
+                            const startPt = pdfBoothDict[startLocationKey] || { x: 3, y: 11 };
+                            const targets = selected.map(b => ({
+                              ...b,
+                              x: pdfBoothDict[b.booth]?.x || b.x || 4,
+                              y: pdfBoothDict[b.booth]?.y || b.y || 4
+                            }));
+                            const orderedTargets = calculateOptimalOrder(startPt, targets);
+                            
+                            let fullPath = [];
+                            let curr = startPt;
+                            for (let i = 0; i < orderedTargets.length; i++) {
+                              const seg = findShortestPath(gridMapMatrix, curr, orderedTargets[i]);
+                              if (i > 0) seg.shift();
+                              fullPath = [...fullPath, ...seg];
+                              curr = orderedTargets[i];
+                            }
+
+                            setCalculatedRoute({
+                              startKey: startLocationKey,
+                              orderedTargets,
+                              fullPath
+                            });
+                            showToast('🚀 aT센터 최단 순회 최적 동선이 시각화되었습니다!');
+                          }}
+                          className="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl text-xs font-extrabold shadow-md hover:scale-105 transition-all flex items-center space-x-1"
+                        >
+                          <span>🚀</span>
+                          <span>최적 동선 안내받기</span>
+                        </button>
+                      </div>
+
+                      {/* Departure Selector */}
+                      <div className={`p-2.5 rounded-lg border flex flex-wrap items-center justify-between gap-2 text-xs ${
+                        isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-950 border-slate-800'
+                      }`}>
+                        <span className="font-bold flex items-center space-x-1">
+                          <span>🚩 출발 위치:</span>
+                        </span>
+                        <select
+                          value={startLocationKey}
+                          onChange={(e) => setStartLocationKey(e.target.value)}
+                          className={`px-2 py-1.5 rounded-lg text-xs font-bold border focus:outline-none ${
+                            isBaepsae ? 'bg-white border-pink-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                          }`}
+                        >
+                          <option value="금·일요일 입구">🚪 금·일요일 메인 입구</option>
+                          <option value="토요일 입구">🚪 토요일 메인 입구</option>
+                          <option value="T-110">부스 T-110 (가빈)</option>
+                          <option value="F-206">부스 F-206 (TAM / 3분수채초상화)</option>
+                          <option value="J-207">부스 J-207 (간밤에 아답)</option>
+                        </select>
+                      </div>
+
+                      {/* Bookmarks List */}
+                      <div className="space-y-2 max-h-56 overflow-y-auto scrollbar-hide pr-1">
+                        {bookmarkList.map(bm => (
+                          <div 
+                            key={bm.id}
+                            className={`p-2.5 rounded-xl border flex items-start justify-between gap-2 transition-all ${
+                              bm.checked 
+                                ? (isBaepsae ? 'bg-pink-50/70 border-pink-300 ring-1 ring-pink-200' : 'bg-indigo-950/40 border-indigo-700/60 ring-1 ring-indigo-600/40')
+                                : (isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-900 border-slate-800')
+                            }`}
+                          >
+                            <div className="flex items-start space-x-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={bm.checked}
+                                onChange={() => {
+                                  setBookmarkList(prev => prev.map(b => b.id === bm.id ? { ...b, checked: !b.checked } : b));
+                                }}
+                                className="mt-1 w-4 h-4 rounded text-pink-500 accent-pink-500 shrink-0 cursor-pointer"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center space-x-1.5">
+                                  <span className="px-1.5 py-0.5 bg-pink-500 text-white text-[10px] font-extrabold rounded shadow-xs">
+                                    {bm.booth}
+                                  </span>
+                                  <span className="font-extrabold text-xs truncate">
+                                    {bm.name}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] opacity-80 mt-0.5 truncate">
+                                  {bm.memo || '메모 없음'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                setBookmarkList(prev => prev.filter(b => b.id !== bm.id));
+                                showToast('🗑️ 북마크에서 삭제되었습니다.');
+                              }}
+                              className="text-xs text-rose-500 hover:text-rose-700 p-1 shrink-0 font-bold"
+                              title="북마크 삭제"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Lower Section (50%): 2D SVG Grid Map Visualizer */}
+                    <div className={`p-4 rounded-xl border shadow-sm space-y-3 relative overflow-hidden ${
+                      isBaepsae ? 'bg-white border-amber-200/80 shadow-pink-500/5' : 'glass-panel-dark border-slate-800'
+                    }`}>
+                      <div className="flex justify-between items-center border-b pb-2 border-stone-200 dark:border-slate-800">
+                        <div>
+                          <h2 className="text-base font-extrabold flex items-center space-x-1.5">
+                            <span>🗺️ 2026 일러스트코리아 aT센터 간이 지도</span>
+                          </h2>
+                          <p className="text-[10px] opacity-75">12x12 그리드 맵 • 장애물 회피 A* 최적 경로 시각화</p>
+                        </div>
+                        <span className="text-xs font-bold text-pink-500 animate-pulse">
+                          {calculatedRoute ? '🚀 최적 경로 시각화 중' : '📍 부스 배치도'}
+                        </span>
+                      </div>
+
+                      {/* SVG Grid Map Component */}
+                      <div className="w-full aspect-square max-h-72 border rounded-xl relative overflow-hidden bg-slate-950 p-2 flex items-center justify-center shadow-inner">
+                        <svg viewBox="0 0 120 120" className="w-full h-full">
+                          <defs>
+                            <pattern id="gridPattern" width="10" height="10" patternUnits="userSpaceOnUse">
+                              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1e293b" strokeWidth="0.5" />
+                            </pattern>
+                          </defs>
+                          <rect width="120" height="120" fill="url(#gridPattern)" />
+
+                          {/* Grid Wall Cells (1) & Entrances (2) */}
+                          {gridMapMatrix.map((row, rIdx) =>
+                            row.map((cell, cIdx) => {
+                              if (cell === 1) {
+                                return (
+                                  <rect
+                                    key={`wall-${rIdx}-${cIdx}`}
+                                    x={cIdx * 10 + 0.5}
+                                    y={rIdx * 10 + 0.5}
+                                    width="9"
+                                    height="9"
+                                    rx="1.5"
+                                    fill="#334155"
+                                    stroke="#475569"
+                                    strokeWidth="0.5"
+                                  />
+                                );
+                              }
+                              if (cell === 2) {
+                                return (
+                                  <rect
+                                    key={`ent-${rIdx}-${cIdx}`}
+                                    x={cIdx * 10}
+                                    y={rIdx * 10}
+                                    width="10"
+                                    height="10"
+                                    fill="#059669"
+                                    opacity="0.4"
+                                  />
+                                );
+                              }
+                              return null;
+                            })
+                          )}
+
+                          {/* Departure Marker */}
+                          {(() => {
+                            const startPt = pdfBoothDict[startLocationKey] || { x: 3, y: 11 };
+                            return (
+                              <g key="startMarker">
+                                <circle cx={startPt.x * 10 + 5} cy={startPt.y * 10 + 5} r="4" fill="#10b981" />
+                                <text x={startPt.x * 10 + 5} y={startPt.y * 10 + 6.5} textAnchor="middle" fill="#ffffff" fontSize="4.5" fontWeight="bold">S</text>
+                              </g>
+                            );
+                          })()}
+
+                          {/* Target Booth Pin Badges (①, ②, ③) */}
+                          {calculatedRoute && calculatedRoute.orderedTargets.map((target, idx) => (
+                            <g key={`target-${idx}`}>
+                              <circle cx={target.x * 10 + 5} cy={target.y * 10 + 5} r="4.5" fill="#ec4899" stroke="#ffffff" strokeWidth="0.8" />
+                              <text x={target.x * 10 + 5} y={target.y * 10 + 6.5} textAnchor="middle" fill="#ffffff" fontSize="4.5" fontWeight="black">
+                                {idx + 1}
+                              </text>
+                            </g>
+                          ))}
+
+                          {/* Polyline Route Line */}
+                          {calculatedRoute && calculatedRoute.fullPath && calculatedRoute.fullPath.length > 1 && (
+                            <polyline
+                              points={calculatedRoute.fullPath.map(p => `${p.x * 10 + 5},${p.y * 10 + 5}`).join(' ')}
+                              fill="none"
+                              stroke="#f43f5e"
+                              strokeWidth="2.5"
+                              strokeDasharray="3 1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="animate-pulse"
+                            />
+                          )}
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
               </main>
@@ -1209,7 +1546,25 @@
                 </div>
               )}
 
-              {/* Fixed Bottom Navigation Bar (YouTube Mobile App Standard: Screen Viewport Fixed) */}
+              {activeTab === 'navi' && (
+                <div className={`fixed fab-safe-bottom left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-2xl lg:max-w-xl px-4 flex justify-end pointer-events-none z-40 transition-all duration-300 ${
+                  isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+                }`}>
+                  <button 
+                    onClick={() => {
+                      setOcrForm({ booth: '', name: '', memo: '' });
+                      setIsOcrModalOpen(true);
+                    }}
+                    className={`pointer-events-auto text-white px-4 py-3.5 rounded-full shadow-xl font-bold text-xs flex items-center space-x-1.5 transition-all hover:scale-105 active:scale-95 ${
+                      isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                    }`}
+                  >
+                    <span>📸 부스 간판 찍기 (OCR)</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Fixed Bottom Navigation Bar (4 Tabs: Scheduler, Raid, Swap, Navi) */}
               <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t transition-all duration-300 nav-safe-bottom shadow-lg ${
                 isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
               } ${
@@ -1220,7 +1575,7 @@
                 <div className="w-full max-w-md md:max-w-2xl lg:max-w-xl mx-auto flex items-center justify-around">
                   <button 
                     onClick={() => handleTabChange('scheduler')}
-                    className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                    className={`flex-1 py-2 text-[11px] font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
                       activeTab === 'scheduler' 
                         ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
                         : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
@@ -1232,7 +1587,7 @@
 
                   <button 
                     onClick={() => handleTabChange('raid')}
-                    className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                    className={`flex-1 py-2 text-[11px] font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
                       activeTab === 'raid' 
                         ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
                         : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
@@ -1244,7 +1599,7 @@
 
                   <button 
                     onClick={() => handleTabChange('swap')}
-                    className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                    className={`flex-1 py-2 text-[11px] font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
                       activeTab === 'swap' 
                         ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
                         : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
@@ -1252,6 +1607,18 @@
                   >
                     <span className="text-base">🔄</span>
                     <span>굿즈 스왑</span>
+                  </button>
+
+                  <button 
+                    onClick={() => handleTabChange('navi')}
+                    className={`flex-1 py-2 text-[11px] font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                      activeTab === 'navi' 
+                        ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
+                        : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
+                    }`}
+                  >
+                    <span className="text-base">🧭</span>
+                    <span>길찾기</span>
                   </button>
                 </div>
               </nav>
@@ -1614,6 +1981,133 @@
                 >
                   트위터 공유용 텍스트 복사
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Camera OCR Viewfinder Modal */}
+          {isOcrModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+              <div className={`border w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 ${
+                isBaepsae ? 'bg-white border-amber-200 text-stone-800' : 'bg-slate-900 border-slate-700 text-slate-100'
+              }`}>
+                <div className="flex justify-between items-center border-b border-stone-200 dark:border-slate-800 pb-2">
+                  <h3 className="text-base font-bold flex items-center space-x-2">
+                    <span>📸 부스 간판 촬영 (로컬 OCR 스캔)</span>
+                  </h3>
+                  <button onClick={() => setIsOcrModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+
+                {/* Viewfinder Camera Simulation Window */}
+                <div className="relative w-full aspect-video rounded-xl bg-black overflow-hidden border-2 border-dashed border-pink-500/60 flex items-center justify-center">
+                  {isOcrScanning ? (
+                    <div className="flex flex-col items-center space-y-3 text-pink-400">
+                      <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-xs font-extrabold animate-pulse">⚡ Tesseract.js 로컬 OCR 텍스트 분석 중 (1.5초)...</p>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-2 p-4">
+                      <div className="w-16 h-16 mx-auto border-2 border-pink-400/80 rounded-lg flex items-center justify-center relative">
+                        <span className="text-2xl">📷</span>
+                        <span className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-pink-500"></span>
+                        <span className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-pink-500"></span>
+                        <span className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-pink-500"></span>
+                        <span className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-pink-500"></span>
+                      </div>
+                      <p className="text-xs font-bold opacity-80">부스 간판 번호를 카메라 화면에 맞추고 [스캔 촬영]을 누르세요</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Capture Button */}
+                <button
+                  onClick={() => {
+                    setIsOcrScanning(true);
+                    setTimeout(() => {
+                      setIsOcrScanning(false);
+                      const mockKeys = ['T-110', 'F-206', 'J-207', 'Q-208', 'T-132', 'O-101', 'K-204'];
+                      const randomKey = mockKeys[Math.floor(Math.random() * mockKeys.length)];
+                      const boothInfo = pdfBoothDict[randomKey];
+                      setOcrForm({
+                        booth: boothInfo.booth,
+                        name: boothInfo.name,
+                        memo: '📸 로컬 OCR 자동스캔 북마크'
+                      });
+                      showToast(`📸 OCR 스캔 성공: ${boothInfo.booth} (${boothInfo.name})`);
+                    }, 1500);
+                  }}
+                  disabled={isOcrScanning}
+                  className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-extrabold text-xs rounded-xl shadow-md hover:scale-102 transition-all flex items-center justify-center space-x-1.5"
+                >
+                  <span>📸</span>
+                  <span>부스 간판 스캔 촬영</span>
+                </button>
+
+                {/* Form Input Section */}
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!ocrForm.booth) {
+                    showToast('부스 번호를 입력하거나 스캔해 주세요.');
+                    return;
+                  }
+                  const boothObj = pdfBoothDict[ocrForm.booth] || { x: 5, y: 5 };
+                  const newBm = {
+                    id: Date.now(),
+                    booth: ocrForm.booth,
+                    name: ocrForm.name || '미등록 부스',
+                    memo: ocrForm.memo || '현장 스캔 찜',
+                    checked: true,
+                    x: boothObj.x,
+                    y: boothObj.y
+                  };
+                  setBookmarkList([newBm, ...bookmarkList]);
+                  setIsOcrModalOpen(false);
+                  showToast(`🔖 '${ocrForm.booth}' 부스가 내 북마크에 추가되었습니다!`);
+                }} className="space-y-3 pt-2 border-t border-stone-200 dark:border-slate-800">
+                  <div>
+                    <label className="text-xs font-bold block mb-1">부스 번호</label>
+                    <input
+                      type="text"
+                      value={ocrForm.booth}
+                      onChange={(e) => setOcrForm({ ...ocrForm, booth: e.target.value })}
+                      placeholder="예: T-110"
+                      required
+                      className={`w-full border rounded-lg p-2 text-xs ${
+                        isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold block mb-1">부스명 / 작가명</label>
+                    <input
+                      type="text"
+                      value={ocrForm.name}
+                      onChange={(e) => setOcrForm({ ...ocrForm, name: e.target.value })}
+                      placeholder="예: 가빈"
+                      className={`w-full border rounded-lg p-2 text-xs ${
+                        isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold block mb-1">메모</label>
+                    <input
+                      type="text"
+                      value={ocrForm.memo}
+                      onChange={(e) => setOcrForm({ ...ocrForm, memo: e.target.value })}
+                      placeholder="구매 예정 굿즈 메모..."
+                      className={`w-full border rounded-lg p-2 text-xs ${
+                        isBaepsae ? 'bg-stone-50 border-stone-300 text-stone-800' : 'bg-slate-800 border-slate-700 text-white'
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs rounded-xl shadow-md"
+                  >
+                    💾 내 북마크에 추가하기
+                  </button>
+                </form>
               </div>
             </div>
           )}

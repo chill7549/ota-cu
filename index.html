@@ -1177,77 +1177,83 @@
 
               </main>
 
-              {/* Floating Action Buttons (FAB with safe area bottom & dynamic scroll hide/show) */}
+              {/* Floating Action Buttons (YouTube App Standard Screen-Fixed Positioning) */}
               {activeTab === 'raid' && (
-                <button 
-                  onClick={() => setIsCreateRaidOpen(true)}
-                  className={`fixed sm:absolute fab-safe-bottom right-4 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center text-2xl z-40 transition-all duration-300 hover:scale-105 active:scale-95 ${
-                    isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
-                  } ${
-                    isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
-                  }`}
-                  title="실시간 제보하기"
-                >
-                  +
-                </button>
+                <div className={`fixed fab-safe-bottom left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-2xl lg:max-w-xl px-4 flex justify-end pointer-events-none z-40 transition-all duration-300 ${
+                  isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+                }`}>
+                  <button 
+                    onClick={() => setIsCreateRaidOpen(true)}
+                    className={`pointer-events-auto w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center text-2xl transition-all hover:scale-105 active:scale-95 ${
+                      isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                    }`}
+                    title="실시간 제보하기"
+                  >
+                    +
+                  </button>
+                </div>
               )}
 
               {activeTab === 'swap' && (
-                <button 
-                  onClick={() => setIsCreateSwapOpen(true)}
-                  className={`fixed sm:absolute fab-safe-bottom right-4 text-white px-4 py-3.5 rounded-full shadow-xl font-bold text-xs flex items-center space-x-1.5 z-40 transition-all duration-300 hover:scale-105 active:scale-95 ${
-                    isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
-                  } ${
-                    isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
-                  }`}
-                >
-                  <span>🔄 굿즈 교환 글 올리기</span>
-                </button>
+                <div className={`fixed fab-safe-bottom left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-2xl lg:max-w-xl px-4 flex justify-end pointer-events-none z-40 transition-all duration-300 ${
+                  isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+                }`}>
+                  <button 
+                    onClick={() => setIsCreateSwapOpen(true)}
+                    className={`pointer-events-auto text-white px-4 py-3.5 rounded-full shadow-xl font-bold text-xs flex items-center space-x-1.5 transition-all hover:scale-105 active:scale-95 ${
+                      isBaepsae ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                    }`}
+                  >
+                    <span>🔄 굿즈 교환 글 올리기</span>
+                  </button>
+                </div>
               )}
 
-              {/* Fixed Bottom Navigation Bar with Safe Area Bottom Padding (nav-safe-bottom) & Dynamic Scroll Hide/Show */}
-              <nav className={`flex lg:hidden border-t sticky bottom-0 z-30 transition-all duration-300 nav-safe-bottom ${
+              {/* Fixed Bottom Navigation Bar (YouTube Mobile App Standard: Screen Viewport Fixed) */}
+              <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t transition-all duration-300 nav-safe-bottom shadow-lg ${
                 isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
               } ${
                 isBaepsae 
                   ? 'bg-white/95 backdrop-blur-md border-amber-200/80 text-stone-600' 
                   : 'bg-slate-900/95 backdrop-blur-md border-slate-800 text-slate-400'
               }`}>
-                <button 
-                  onClick={() => handleTabChange('scheduler')}
-                  className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
-                    activeTab === 'scheduler' 
-                      ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
-                      : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
-                  }`}
-                >
-                  <span className="text-base">🗓️</span>
-                  <span>스케줄러</span>
-                </button>
+                <div className="w-full max-w-md md:max-w-2xl lg:max-w-xl mx-auto flex items-center justify-around">
+                  <button 
+                    onClick={() => handleTabChange('scheduler')}
+                    className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                      activeTab === 'scheduler' 
+                        ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
+                        : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
+                    }`}
+                  >
+                    <span className="text-base">🗓️</span>
+                    <span>스케줄러</span>
+                  </button>
 
-                <button 
-                  onClick={() => handleTabChange('raid')}
-                  className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
-                    activeTab === 'raid' 
-                      ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
-                      : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
-                  }`}
-                >
-                  <span className="text-base">🚨</span>
-                  <span>현장 레이드</span>
-                </button>
+                  <button 
+                    onClick={() => handleTabChange('raid')}
+                    className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                      activeTab === 'raid' 
+                        ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
+                        : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
+                    }`}
+                  >
+                    <span className="text-base">🚨</span>
+                    <span>현장 레이드</span>
+                  </button>
 
-                <button 
-                  onClick={() => handleTabChange('swap')}
-                  className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
-                    activeTab === 'swap' 
-                      ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
-                      : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
-                  }`}
-                >
-                  <span className="text-base">🔄</span>
-                  <span>굿즈 스왑</span>
-                </button>
+                  <button 
+                    onClick={() => handleTabChange('swap')}
+                    className={`flex-1 py-2 text-xs font-bold text-center flex flex-col items-center justify-center space-y-0.5 transition-all ${
+                      activeTab === 'swap' 
+                        ? (isBaepsae ? 'text-pink-600 font-extrabold' : 'text-indigo-400 font-extrabold') 
+                        : (isBaepsae ? 'text-stone-400 hover:text-stone-700' : 'text-slate-400 hover:text-slate-200')
+                    }`}
+                  >
+                    <span className="text-base">🔄</span>
+                    <span>굿즈 스왑</span>
+                  </button>
+                </div>
               </nav>
 
             </div>

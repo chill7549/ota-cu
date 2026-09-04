@@ -1,5 +1,5 @@
-// Ota-Cu Service Worker for PWA App Support - v4 (Scroll Hide/Show Navigation)
-const CACHE_NAME = 'otacu-cache-v4';
+// Ota-Cu Service Worker for PWA App Support - v5 (YouTube App Standard Viewport Fixed Bottom Nav)
+const CACHE_NAME = 'otacu-cache-v5';
 const urlsToCache = [
   './',
   './index.html',

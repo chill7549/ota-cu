@@ -67,5 +67,7 @@
 ### 🔹 v1.6 (핸드폰 다이나믹 아일랜드 / 노치 / 상태바 Safe Area Inset 완벽 방지)
 - `env(safe-area-inset-top)` & `env(safe-area-inset-bottom)` 환경 변수를 상단 헤더(`header-safe-top`)와 하단 네비게이션 바(`nav-safe-bottom`), FAB(`fab-safe-bottom`)에 완벽 적용하여 아이폰 다이나믹 아일랜드, 노치, 상단 상태바(시계, 배터리 등) 및 하단 홈 바와 UI가 겹치는 현상을 전면 해결.
 
-### 🔹 v1.7 (스크롤 방향 감지 하단 탭 & FAB 숨김/보임 애니메이션)
-- 스크롤 내려갈 때(Scroll Down) 하단 탭(`🗓️ 스케줄러`, `🚨 현장 레이드`, `🔄 굿즈 스왑`)과 FAB 버튼이 아래로 숨겨져(`translate-y-full`) 콘텐츠 시야를 확보하고, 스크롤 올릴 때(Scroll Up) 부드럽게 다시 나타나도록 dynamic scroll transition (`duration-300`) 적용. PWA Service Worker v4 갱신.
+### 🔹 v1.7 (초기 하단 3개 탭 화면 노출 보장 & 직관적 v1.7 버전 뱃지 추가)
+- **탭 접속 시 초기 노출 보장**: 어느 탭(`🗓️ 행사 스케줄러`, `🚨 실시간 현장 레이드`, `🔄 굿즈 스왑`)이든 접속하거나 새로고침 시 3개의 하단 탭이 화면 하단에 무조건 노출(`isNavVisible: true`, `scrollTop = 0`)되도록 보장.
+- **동적 스크롤 숨김/보임**: 피드 스크롤 다운 시 하단 탭과 FAB 버튼이 아래로 숨겨지고(`translate-y-full`), 스크롤 업 시 다시 나타나는(`translate-y-0`) 부드러운 애니메이션(`duration-300`) 유지.
+- **직관적 버전 표시 (v1.7 Badge)**: 모바일/웹 상단 헤더, 데스크톱 사이드바, 인프라 모달 상단에 핫핑크 색상의 `v1.7` 뱃지를 배치하여 현재 버전을 한눈에 확인 가능하도록 개선.

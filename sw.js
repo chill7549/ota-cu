@@ -1,5 +1,5 @@
-// Ota-Cu Service Worker for PWA App Support - v3 (Safe Area Inset & Cache Purge)
-const CACHE_NAME = 'otacu-cache-v3';
+// Ota-Cu Service Worker for PWA App Support - v4 (Scroll Hide/Show Navigation)
+const CACHE_NAME = 'otacu-cache-v4';
 const urlsToCache = [
   './',
   './index.html',

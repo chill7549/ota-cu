@@ -264,6 +264,7 @@
 
     // --- 2026 SEOUL ILLUSTRATION KOREA aT Center PDF Booth Dictionary & Grid Map Data ---
     const pdfBoothDict = {
+      'F-110': { booth: 'F-110', name: '영이', x: 5, y: 3 },
       'T-110': { booth: 'T-110', name: '가빈', x: 2, y: 1 },
       'J-207': { booth: 'J-207', name: '간밤에 아답', x: 4, y: 3 },
       'F-206': { booth: 'F-206', name: 'TAM 모든 순간을 칠하다.', x: 6, y: 3 },
@@ -556,10 +557,13 @@
       const [startLocationKey, setStartLocationKey] = useState('금·일요일 입구');
       const [calculatedRoute, setCalculatedRoute] = useState(null);
 
-      // Bookmark Touch Drag & Drop Pointer Motion Tracking State
+      // Bookmark Touch Drag & Drop Pointer Motion Tracking State (Single Floating Dragged Card)
       const longPressTimerRef = React.useRef(null);
       const [dragItemIndex, setDragItemIndex] = useState(null);
       const [dragTargetIndex, setDragTargetIndex] = useState(null);
+      const [dragTouchY, setDragTouchY] = useState(0);
+      const [dragStartTouchY, setDragStartTouchY] = useState(0);
+
       const dragStartIndexRef = React.useRef(null);
       const dragCurrentTargetIndexRef = React.useRef(null);
       const bookmarkListRef = React.useRef(bookmarkList);
@@ -571,19 +575,22 @@
       const handleBookmarkTouchStart = (e, index) => {
         dragStartIndexRef.current = index;
         dragCurrentTargetIndexRef.current = index;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        setDragStartTouchY(clientY);
+        setDragTouchY(clientY);
 
         longPressTimerRef.current = setTimeout(() => {
           setDragItemIndex(index);
           setDragTargetIndex(index);
           if (navigator.vibrate) navigator.vibrate(50);
-          showToast(`⚡ 0.3초 롱터치 감지! 손가락을 떼지 말고 위아래로 움직여 순서를 변경하세요.`);
+          showToast(`⚡ 0.3초 롱터치 감지! 선택한 박스만 이동하여 위치를 재배치하세요.`);
         }, 300);
       };
 
       const handleBookmarkTouchMove = (e) => {
         if (dragStartIndexRef.current === null) return;
 
-        // If finger moved before 300ms -> cancel long press timer to allow page scrolling
+        // Finger moved before 300ms -> cancel long press timer to allow normal scrolling
         if (longPressTimerRef.current && dragItemIndex === null) {
           clearTimeout(longPressTimerRef.current);
           longPressTimerRef.current = null;
@@ -591,12 +598,12 @@
         }
 
         if (dragItemIndex !== null) {
-          // Prevent default screen scrolling while dragging card
           if (e.cancelable) e.preventDefault();
-          const touchY = e.touches ? e.touches[0].clientY : e.clientY;
-          const touchX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          setDragTouchY(clientY);
 
-          const element = document.elementFromPoint(touchX, touchY);
+          const element = document.elementFromPoint(clientX, clientY);
           if (element) {
             const cardEl = element.closest('[data-bookmark-index]');
             if (cardEl) {
@@ -633,6 +640,8 @@
         dragCurrentTargetIndexRef.current = null;
         setDragItemIndex(null);
         setDragTargetIndex(null);
+        setDragTouchY(0);
+        setDragStartTouchY(0);
       };
 
       const moveBookmark = (fromIndex, toIndex) => {
@@ -712,7 +721,7 @@
         touchStartRef.current = null;
       };
 
-      // Real Canvas Cropper & Tesseract.js Client-Side OCR Execution
+      // Real Canvas Binarization & Tesseract.js Client-Side OCR Execution
       const executeOcrScan = async () => {
         setIsOcrScanning(true);
         try {
@@ -727,67 +736,76 @@
             canvas.width = 400;
             canvas.height = 250;
 
+            // White Background & Render zoomed/panned viewport image
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, 400, 250);
             ctx.translate(200 + panOffset.x, 125 + panOffset.y);
             ctx.scale(zoomScale, zoomScale);
             ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
+            // Canvas Binarization & High Contrast Grayscale Thresholding
+            const imgData = ctx.getImageData(0, 0, 400, 250);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+              const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              const v = avg < 140 ? 0 : 255;
+              data[i] = v;
+              data[i + 1] = v;
+              data[i + 2] = v;
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            // Run Tesseract OCR on preprocessed canvas
             const worker = await Tesseract.createWorker('eng+kor');
             const ret = await worker.recognize(canvas);
             await worker.terminate();
 
-            const text = ret.data.text || '';
-            console.log('Tesseract OCR Extracted Text:', text);
+            const text = (ret.data.text || '').replace(/\s+/g, ' ');
+            console.log('Tesseract Binarized OCR Text Output:', text);
 
+            // Match Booth Code Pattern [A-Z]-\d+ (e.g. F-110, T-110, F-206)
             const match = text.match(/([A-Z]-\d+)/i);
-            if (match && pdfBoothDict[match[1].toUpperCase()]) {
-              const matchedKey = match[1].toUpperCase();
-              const bInfo = pdfBoothDict[matchedKey];
-              setOcrForm({
-                booth: bInfo.booth,
-                name: bInfo.name,
-                memo: `📸 이미지 실시간 OCR 인식 (${matchedKey})`
-              });
-              showToast(`⚡ 이미지 정밀 OCR 성공: ${bInfo.booth} (${bInfo.name})`);
+            let matchedObj = null;
+
+            if (match) {
+              const code = match[1].toUpperCase();
+              if (pdfBoothDict[code]) {
+                matchedObj = pdfBoothDict[code];
+              } else {
+                matchedObj = { booth: code, name: '현장 스캔 부스' };
+              }
             } else {
-              let matched = null;
+              // Check if any booth name from pdfBoothDict is recognized in text (e.g. 영이 -> F-110)
               for (const k in pdfBoothDict) {
                 if (text.includes(pdfBoothDict[k].name) || text.toUpperCase().includes(k)) {
-                  matched = pdfBoothDict[k];
+                  matchedObj = pdfBoothDict[k];
                   break;
                 }
               }
+            }
 
-              if (!matched) {
-                const boothKeys = Object.keys(pdfBoothDict);
-                const pickKey = boothKeys[Math.floor(Math.abs(panOffset.x + panOffset.y + zoomScale * 10) % boothKeys.length)];
-                matched = pdfBoothDict[pickKey];
-              }
-
+            if (matchedObj) {
               setOcrForm({
-                booth: matched.booth,
-                name: matched.name,
-                memo: `📸 뷰파인더 픽셀 영역 OCR 인식`
+                booth: matchedObj.booth,
+                name: matchedObj.name,
+                memo: `📸 이미지 실시간 OCR 인식 (${matchedObj.booth})`
               });
-              showToast(`⚡ OCR 스캔 영역 분석 완료: ${matched.booth} (${matched.name})`);
+              showToast(`⚡ 이미지 정밀 OCR 성공: ${matchedObj.booth} (${matchedObj.name})`);
+            } else {
+              // EXACT User Specified Failure Message: No random fallbacks!
+              setOcrForm({ booth: '', name: '', memo: '' });
+              showToast('⚠️ 인식 실패: 부스 번호 글자에 맞춰 줌/이동 후 다시 스캔해 주세요.');
             }
           } else {
-            const boothKeys = Object.keys(pdfBoothDict);
-            const pickKey = boothKeys[Math.floor(Math.random() * boothKeys.length)];
-            const bInfo = pdfBoothDict[pickKey];
-            setOcrForm({
-              booth: bInfo.booth,
-              name: bInfo.name,
-              memo: '📸 로컬 OCR 스캔 북마크'
-            });
-            showToast(`⚡ OCR 스캔 인식 완료: ${bInfo.booth} (${bInfo.name})`);
+            // Default sample when no photo uploaded yet
+            const fallback = pdfBoothDict['F-110'];
+            setOcrForm({ booth: fallback.booth, name: fallback.name, memo: '📸 샘플 OCR 스캔 부스' });
+            showToast(`⚡ 샘플 OCR 인식: ${fallback.booth} (${fallback.name})`);
           }
         } catch (err) {
-          console.error('OCR Exception:', err);
-          const fallback = pdfBoothDict['T-110'];
-          setOcrForm({ booth: fallback.booth, name: fallback.name, memo: '📸 로컬 스캔 찜' });
-          showToast(`⚡ OCR 스캔 완료: ${fallback.booth} (${fallback.name})`);
+          console.error('OCR Processing Error:', err);
+          setOcrForm({ booth: '', name: '', memo: '' });
+          showToast('⚠️ 인식 실패: 부스 번호 글자에 맞춰 줌/이동 후 다시 스캔해 주세요.');
         } finally {
           setIsOcrScanning(false);
         }
@@ -1679,6 +1697,7 @@
                         {bookmarkList.map((bm, index) => {
                           const isDragging = dragItemIndex === index;
                           const isDropTarget = dragTargetIndex === index && dragItemIndex !== index;
+                          const deltaY = isDragging ? dragTouchY - dragStartTouchY : 0;
 
                           return (
                             <div 
@@ -1691,11 +1710,12 @@
                               onMouseUp={handleBookmarkTouchEnd}
                               onMouseLeave={handleBookmarkTouchEnd}
                               onContextMenu={(e) => e.preventDefault()}
+                              style={isDragging ? { transform: `translateY(${deltaY}px)` } : {}}
                               className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition-all relative no-select select-none ${
                                 isDragging 
-                                  ? 'bg-gradient-to-r from-pink-600 to-rose-600 border-pink-400 ring-4 ring-pink-400/80 shadow-2xl scale-[1.03] z-30 text-white' 
+                                  ? 'bg-gradient-to-r from-pink-600 to-rose-600 border-pink-400 ring-4 ring-pink-400/80 shadow-2xl z-40 text-white shadow-pink-500/50 scale-[1.03]' 
                                   : isDropTarget
-                                    ? 'bg-pink-100 dark:bg-pink-950/60 border-pink-500 ring-2 ring-pink-400 scale-[1.01] z-20'
+                                    ? 'bg-pink-100/90 dark:bg-pink-950/70 border-2 border-dashed border-pink-500 ring-2 ring-pink-400/60 scale-[1.01] z-20'
                                     : bm.checked 
                                       ? (isBaepsae ? 'bg-pink-50/70 border-pink-300 ring-1 ring-pink-200' : 'bg-indigo-950/40 border-indigo-700/60 ring-1 ring-indigo-600/40')
                                       : (isBaepsae ? 'bg-stone-50 border-stone-200' : 'bg-slate-900 border-slate-800')

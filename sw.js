@@ -1,5 +1,5 @@
-// Ota-Cu Service Worker for PWA App Support - v9 (Canvas Tesseract OCR & Touch Pointer Drag-and-Drop)
-const CACHE_NAME = 'otacu-cache-v9';
+// Ota-Cu Service Worker for PWA App Support - v10 (Strict OCR Failure Notification & Single Floating Card Touch Drag)
+const CACHE_NAME = 'otacu-cache-v10';
 const urlsToCache = [
   './',
   './index.html',
